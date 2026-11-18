@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4" shape-rendering="crispEdges">
+  <path opacity=".0625" d="M0 0h1v1H0zM2 2h1v1H2z"/>
+  <path opacity=".1875" d="M2 0h1v1H2zM0 2h1v1H0z"/>
+  <path opacity=".3125" d="M1 1h1v1H1zM3 3h1v1H3z"/>
+  <path opacity=".4375" d="M3 1h1v1H3zM1 3h1v1H1z"/>
+  <path opacity=".5625" d="M1 0h1v1H1zM3 2h1v1H3z"/>
+  <path opacity=".6875" d="M3 0h1v1H3zM1 2h1v1H1z"/>
+  <path opacity=".8125" d="M0 1h1v1H0zM2 3h1v1H2z"/>
+  <path opacity=".9375" d="M2 1h1v1H2zM0 3h1v1H0z"/>
+</svg>

@@ -1,0 +1,84 @@
+{
+  "name": "questlog-overlay",
+  "productName": "Questlog",
+  "version": "0.12.0",
+  "private": true,
+  "description": "A quiet, translucent desktop checklist and notepad.",
+  "repository": "github:pebaum/questlog-overlay",
+  "author": "Questlog",
+  "type": "module",
+  "main": "desktop/main.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "test": "node --test tests/journal.test.js tests/countdown.test.js tests/updates.test.js",
+    "test:desktop": "npm run build && node --test tests/desktop.test.js",
+    "test:uia": "npm run build && powershell.exe -NoProfile -NonInteractive -File tests\\windows-uia.ps1",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 --arm64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac dmg --x64 --arm64 --publish never"
+  },
+  "devDependencies": {
+    "@fontsource/dotgothic16": "5.3.1",
+    "@fontsource/noto-serif-sc": "5.3.1",
+    "@fontsource/shippori-mincho": "5.3.0",
+    "electron": "45.3.0",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.27.3",
+    "linkify-it": "6.1.0",
+    "playwright-core": "1.65.0",
+    "prosemirror-commands": "1.7.2",
+    "prosemirror-history": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.13",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.9"
+  },
+  "build": {
+    "appId": "app.questlog.desktop",
+    "publish": null,
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "docs/QUESTS-AI.md",
+        "to": "QUESTS-AI.md"
+      },
+      {
+        "from": "app/FONT-LICENSES.txt",
+        "to": "FONT-LICENSES.txt"
+      },
+      {
+        "from": "app/EDITOR-LICENSES.txt",
+        "to": "EDITOR-LICENSES.txt"
+      }
+    ],
+    "files": [
+      "desktop/**/*",
+      "shared/**/*",
+      "app/index.html",
+      "assets/icon.png",
+      "assets/trayTemplate*.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "artifactName": "Questlog-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "include": "build/installer.nsh",
+      "perMachine": false,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Questlog",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "artifactName": "Questlog-${version}-mac-${arch}.${ext}"
+    }
+  }
+}

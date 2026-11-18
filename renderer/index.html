@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="__POLICY__">
+  <title>QUESTS</title>
+  <script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
+  <style>/* __STYLES__ */</style>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">
+    <defs>
+      <filter id="screen-dither" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage id="dither-cell" href="../assets/ps1-matrix.svg" x="0" y="0" width="4" height="4"/>
+        <feTile result="pattern"/>
+        <!-- Complementary samples of the finished panel keep clear pixels clear and solid pixels solid. -->
+        <feComponentTransfer in="SourceGraphic">
+          <feFuncA type="linear" slope="2" intercept="-1"/>
+        </feComponentTransfer>
+        <feComposite in2="pattern" operator="out" result="lightPixels"/>
+        <feComponentTransfer in="SourceGraphic">
+          <feFuncR type="linear" slope=".54" intercept=".06"/>
+          <feFuncG type="linear" slope=".54" intercept=".06"/>
+          <feFuncB type="linear" slope=".54" intercept=".06"/>
+          <feFuncA type="linear" slope="2"/>
+        </feComponentTransfer>
+        <feComposite in2="pattern" operator="in"/>
+        <feComposite in2="lightPixels" operator="arithmetic" k2="1" k3="1" result="textured"/>
+        <feComposite id="dither-mix" in="textured" in2="SourceGraphic" operator="arithmetic" k2="1" k3="0"/>
+      </filter>
+    </defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9.5 3-.8 2.4-2 .9-2.4-.6-1.6 2.8 1.7 1.8v2.5L2.7 15l1.6 2.8 2.4-.6 2 .9.8 2.4h3.2l.8-2.4 2.1-.9 2.4.6 1.6-2.8-1.7-2.2v-2.5l1.7-1.8L18 5.7l-2.4.6-2.1-.9-.8-2.4z"/><circle cx="11.2" cy="11.8" r="3.1"/></symbol>
+    <symbol id="i-block" viewBox="0 0 12 16"><path fill="currentColor" stroke="none" d="M2 2h2v2H2zm5 0h2v2H7zM2 7h2v2H2zm5 0h2v2H7zM2 12h2v2H2zm5 0h2v2H7z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5zM14 20v-5h5M8 8h8M8 11h5"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><rect x="5.5" y="10" width="13" height="10" rx="2"/><path d="M8.5 10V7a3.5 3.5 0 0 1 6.8-1M12 14v2"/></symbol>
+    <symbol id="i-closed" viewBox="0 0 24 24"><rect x="5.5" y="10" width="13" height="10" rx="2"/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3M12 14v2"/></symbol>
+  </svg>
+  <div class="scenery" aria-hidden="true">__ATLAS__</div>
+  <main id="panel" aria-labelledby="overlay-title">
+    <header class="topline" id="move" title="Drag to move">
+      <h1 id="overlay-title">QUESTS</h1>
+      <time id="header-clock" aria-live="off" title="Current local time and date"></time>
+      <div class="tools" role="group" aria-label="Overlay controls">
+        <button id="append" aria-label="Insert item" title="Insert item (Enter)"><svg><use href="#i-plus"/></svg></button>
+        <button id="toggle-notes" aria-label="Notepad" title="Show or hide notepad" aria-controls="notes" aria-expanded="false"><svg><use href="#i-note"/></svg></button>
+        <button id="gear" aria-label="Settings" title="Settings" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#i-settings"/></svg></button>
+        <button id="lock" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button>
+      </div>
+    </header>
+    <form id="countdown" aria-label="Countdown">
+      <input id="timer-time" type="text" aria-label="Timer time" aria-description="Enter minutes, minutes:seconds, or a local time such as 11a or 1234p. Press Enter or Play to start." title="Minutes, mm:ss, or a local time (11a, 1234p)" value="--:--" maxlength="12" required autocomplete="off" spellcheck="false" readonly>
+      <button id="timer-start" type="submit" aria-label="Start timer" title="Start timer (Enter)" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path id="timer-glyph" fill="currentColor" d="M3.25 1.75 14.25 8 3.25 14.25z"/></svg></button>
+      <span class="timer-meter">
+        <progress id="timer-progress" aria-label="Timer progress" max="1" value="0"></progress>
+        <span id="timer-cells" aria-hidden="true"></span>
+      </span>
+    </form>
+    <div id="timer-announcement" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="writing">
+      <ol id="items" aria-label="Checklist" aria-description="Focus an item and press Alt+Up or Alt+Down to change its position."></ol>
+      <div id="notes-wrap" hidden><div id="notes" class="rich"></div></div>
+    </div>
+    <section id="settings" class="sheet" aria-labelledby="settings-title" hidden>
+      <div class="settings-head"><h2 id="settings-title">Settings</h2><button id="settings-done">Done</button></div>
+      <label>Idle opacity <input id="idle-opacity" type="range" min="0" max="100"><output for="idle-opacity"></output></label>
+      <label>Hover opacity <input id="hover-opacity" type="range" min="0" max="100"><output for="hover-opacity"></output></label>
+      <label><input id="fade-text" type="checkbox"> Fade text too</label>
+      <label>Typeface <select id="typeface"></select></label>
+      <button id="fit-content" type="button">Fit window to content</button>
+    </section>
+    <div id="notice" role="alert" hidden></div>
+    <button id="resize" aria-label="Resize window" title="Drag to resize, or focus and use the arrow keys"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 13 10-10m-5 10 5-5"/></svg></button>
+  </main>
+  <div id="order-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <template id="line">
+    <li class="line">
+      <span class="block-handle" title="Drag to reorder"><svg aria-hidden="true"><use href="#i-block"/></svg><input class="order-value" type="range" min="1" step="1" hidden></span>
+      <label class="tick">
+        <input type="checkbox">
+        <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2"/><path d="m5.5 9 2.4 2.5 4.7-5"/></svg>
+      </label>
+      <span class="bullet-mark" aria-hidden="true" hidden>&bull;</span>
+      <div class="words rich"></div>
+    </li>
+  </template>
+  <script>/* __APPLICATION__ */</script>
+</body>
+</html>
