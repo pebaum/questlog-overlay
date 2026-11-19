@@ -200,7 +200,7 @@ function removeRow(row) {
 function clearEmptyRows() {
   for (const row of list.querySelectorAll('.empty')) {
     if (row.contains(document.activeElement)) continue;
-    if (list.children.length > 1 || journal.notesOpen) removeRow(row);
+    if (list.children.length > 1) removeRow(row);
   }
 }
 function createRow(item = {}, after = null) {
@@ -279,8 +279,8 @@ function createRow(item = {}, after = null) {
 }
 function showNotes() {
   $('notes-wrap').hidden = !journal.notesOpen || (locked() && !journal.notes);
-  $('toggle-notes').setAttribute('aria-expanded', String(journal.notesOpen));
-  if (!journal.notesOpen && !list.children.length && !locked()) createRow();
+  $('toggle-notes').checked = journal.notesOpen;
+  if (!list.children.length && !locked()) createRow();
 }
 function setMode(next) {
   mode = next;
@@ -293,6 +293,7 @@ function setMode(next) {
   $('lock').title = native ? `${action} (${mode.shortcut ?? 'use the tray to unlock'})` : `${action} (preview only)`;
   $('lock').setAttribute('aria-label', action); $('lock').setAttribute('aria-pressed', String(locked()));
   $('lock').querySelector('use').setAttribute('href', locked() ? '#i-closed' : '#i-open');
+  visibility?.syncLock();
   fit();
 }
 async function init() {
@@ -322,17 +323,25 @@ async function init() {
       save();
     }
   });
-  $('append').onclick = () => {
-    visibility.reveal();
-    closeSettings(); const last = list.lastElementChild;
-    (last?.classList.contains('empty') ? editors.get(last) : createRow()).focus();
-  };
-  $('toggle-notes').onclick = () => {
-    visibility.reveal();
-    closeSettings(); journal.notesOpen = !journal.notesOpen;
+  $('toggle-notes').onchange = () => {
+    closeSettings(); journal.notesOpen = $('toggle-notes').checked;
     showNotes(); clearEmptyRows(); save(); if (journal.notesOpen) note.focus();
   };
   $('lock').onclick = () => native ? native.toggleLock() : setMode({ ...mode, locked: !locked() });
+  // The padlock must not inherit panel opacity: it is the way back even at 0%.
+  $('lock').showPopover();
+  if (native) {
+    const reportLock = () => {
+      if (!locked()) return;
+      const { x, y, width, height } = $('lock').getBoundingClientRect();
+      native.unlockBounds({ x, y, width, height });
+    };
+    new ResizeObserver(reportLock).observe($('move'));
+    native.onMode(() => requestAnimationFrame(reportLock));
+    window.addEventListener('resize', reportLock);
+    document.fonts.addEventListener('loadingdone', reportLock);
+    requestAnimationFrame(reportLock);
+  }
   document.addEventListener('click', clearEmptyRows); document.addEventListener('keyup', clearEmptyRows);
   syncTimerMode = initTimer(native, locked, notice);
   bindUpdateAction($('update-action'), native, notice);

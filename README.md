@@ -33,7 +33,9 @@ Checks don't send your notes or checklist, and they don't require a GitHub accou
 - New journals use **DotGothic16**: 15 px checklist text, a 20 px title, no extra row gap, 110% line height, and a 6% panel tint with full-strength 1 px dithering. The timer matches the checklist type; the notepad keeps its original size. The preview and installed app continue to store their data separately.
 - DotGothic16, Noto Serif SC, and Shippori Mincho are bundled for offline use, including older journals that selected a different typeface. Their notices are in the preview source and the installed `resources/FONT-LICENSES.txt`.
 - A static 4-by-4 PS1-style dither runs across the letters even while you type. At 0% opacity the letters remain dithered and the space between them stays clear. Windows forced-colors mode skips the effect.
-- Click the **padlock** or press **Ctrl+Shift+Space** to pass clicks through to the app underneath. The shortcut again restores editing. If the shortcut is taken, click Questlog's notification-area icon or choose **Show & edit Questlog** from its menu. The tray menu also lets you hide, reposition, or quit the overlay.
+- Click the **padlock** to pass clicks through the overlay. The closed padlock stays visible and clickable: click it again to unlock. Auto-hide pauses while locked. **Ctrl+Shift+Space** and **Show & edit Questlog** in the tray also restore editing.
+- Press **Enter** at the end of an item to add the next one. Use **Settings > Show notepad** to show or hide your saved notepad.
+- The Windows tray, Start shortcut and application icon use a pixelated SimSun **Q** on dithered charcoal. The overlay still stays out of the taskbar unless you pin its shortcut.
 
 The overlay works over ordinary windows and borderless-windowed games. Exclusive fullscreen, secure desktops (such as UAC prompts), lock screens, and other apps that enforce their own topmost layer are outside its control.
 

@@ -91,6 +91,16 @@ using System;
 using System.Runtime.InteropServices;
 public static class QuestlogHitTest {
     [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowLong(IntPtr hwnd, int index);
+    [StructLayout(LayoutKind.Sequential)] struct Point { public int x, y; }
+    [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(Point p);
+    [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr w, uint flags);
+    public static IntPtr RootAt(int x, int y) {
+        var old = SetThreadDpiAwarenessContext(new IntPtr(-4));
+        try { return GetAncestor(WindowFromPoint(new Point { x=x, y=y }), 2); }
+        finally { SetThreadDpiAwarenessContext(old); }
+    }
+    public static bool PassesClicks(int handle) { return (GetWindowLong(new IntPtr(handle), -20) & 0x20) != 0; }
     [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr w, uint msg, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
     public static void DoubleClickCaption(int handle, int x, int y) {
         int hit = At(handle, x, y);
@@ -109,7 +119,7 @@ public static class QuestlogHitTest {
 }
 '@
     $hwnd = $window.Current.NativeWindowHandle
-    $add = (Control 'Insert item').Current.BoundingRectangle
+    $add = (Control 'Settings').Current.BoundingRectangle
     $y = [int]($add.Top + $add.Height/2)
     foreach ($x in @($window.Current.BoundingRectangle.Left + 18; $add.Left - 9)) {
         if ([QuestlogHitTest]::At($hwnd,$x,$y) -ne 2) { throw 'The heading and the blank part of its bar must both move the native window' }
@@ -150,9 +160,13 @@ try {
     (Text-Value $initial).SetValue('Mark the map')
     # UIA actions are asynchronous; wait for the first editor to leave its draft state.
     [void](Editor 'Item: Mark the map')
-    Invoke-Button 'Insert item'
+    $first = Editor 'Item: Mark the map'
+    $first.SetFocus()
+    Add-Type -AssemblyName System.Windows.Forms
+    if (!$first.Current.HasKeyboardFocus) { throw 'Fixture editor did not receive focus' }
+    [System.Windows.Forms.SendKeys]::SendWait('{END}{ENTER}')
     $second = Editor 'New item'
-    if ($initial.Current.AutomationId -eq $second.Current.AutomationId) { throw 'Insert item did not create a distinct editor' }
+    if ($initial.Current.AutomationId -eq $second.Current.AutomationId) { throw 'Enter did not create a distinct editor' }
     (Text-Value $second).SetValue('Pack the lamp')
     $id = (Control 'Item: Pack the lamp').Current.AutomationId
     if (!$id.StartsWith('text-')) { throw 'Item editor did not expose its stable automation ID' }
@@ -170,7 +184,8 @@ try {
     [void](Wait-For 'order saved without needing a further edit' { (Read-FixtureJournal).items[0].text -eq 'Pack the lamp' })
     (Text-Value (Control 'Item: Pack the lamp')).SetValue('Pack the lantern')
     [void](Control 'Reorder: Pack the lantern' ([System.Windows.Automation.ControlType]::Slider))
-    Invoke-Button 'Notepad'
+    Invoke-Button 'Settings'
+    (Control 'Show notepad' ([System.Windows.Automation.ControlType]::CheckBox)).GetCurrentPattern($toggle).Toggle()
     (Text-Value (Editor 'Notepad')).SetValue('Meet at the trailhead.')
     [void](Wait-For 'edited notepad value' { (Text-Value (Editor 'Notepad')).Current.Value -eq 'Meet at the trailhead.' })
     [void](Wait-For 'saved notes and order' {
@@ -190,6 +205,17 @@ try {
         (Text-Value (Control 'Item: Pack the lantern')).Current.IsReadOnly -and !(Control 'Complete: Pack the lantern').Current.IsEnabled
     })
     Assert-CaptureProtection
+    if (![QuestlogHitTest]::PassesClicks($window.Current.NativeWindowHandle)) { throw 'Locked journal still intercepts mouse input' }
+    $lockRect = (Control 'Unlock overlay').Current.BoundingRectangle
+    $unlock = Wait-For 'visible native unlock button' {
+        $at = [QuestlogHitTest]::RootAt(($lockRect.Left + $lockRect.Width / 2), ($lockRect.Top + $lockRect.Height / 2))
+        if ($at -ne [IntPtr]::Zero -and $at.ToInt32() -ne $window.Current.NativeWindowHandle) {
+            $hitWindow = $ae::FromHandle($at)
+            if ($hitWindow.Current.ProcessId -eq $process.Id) { $hitWindow.FindFirst($descendants, (Named 'Unlock overlay')) }
+        }
+    }
+    $unlock.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    [void](Wait-For 'clickable padlock restores editing' { !(Text-Value (Editor 'Item: Pack the lantern')).Current.IsReadOnly })
     Write-Output 'Windows UI Automation: add, edit, check, reorder, notes, restart and read-only lock passed.'
 } catch {
     $file = Join-Path $profileDir 'journal.json'

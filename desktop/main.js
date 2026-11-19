@@ -7,6 +7,7 @@ import { openJournal, readJson, writeJson } from './storage.js';
 import { findDisplay, fitPanel } from './placement.js';
 import { countdown } from '../shared/countdown.js';
 import { assistantHelp } from './assistant-help.js';
+import { unlockControl } from './unlock-control.js';
 import { windowsUpdater } from './update-manager.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -15,7 +16,7 @@ const accelerator = 'CommandOrControl+Shift+Space';
 app.setName('Questlog');
 if (process.platform === 'win32') app.setAppUserModelId('app.questlog.desktop');
 
-let win, tray, journal, journalFile, layoutFile, editTimer, positionTimer;
+let win, tray, journal, journalFile, layoutFile, editTimer, positionTimer, unlockButton;
 let locked = false, compactHeight = null, iconOnly = false, shortcut = false, dirty = false, quitting = false;
 let requestedHeight = 100, manualSize, hoverTimer, hot = false;
 let timer, timerIssue, updater, updateFrozen = false;
@@ -57,7 +58,7 @@ function savePosition(strict = false) {
   clearTimeout(positionTimer);
   if (!win || win.isDestroyed()) return;
   const { x, y } = win.getBounds();
-  try { writeJson(layoutFile, { x, y, ...(manualSize && { size: manualSize }) }); }
+  try { writeJson(layoutFile, { x, y, ...(locked && { locked: true }), ...(manualSize && { size: manualSize }) }); }
   catch (error) {
     if (strict) throw error;
     console.warn('Could not remember panel position:', error.message);
@@ -112,13 +113,16 @@ function refreshTray() {
 }
 
 function setLocked(next) {
+  const changed = next !== locked;
   locked = next;
+  if (!locked) unlockButton?.clear();
   if (locked && win.isFocused()) win.blur();
   win.setIgnoreMouseEvents(locked);
   win.setFocusable(!locked);
   if (mac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   win.setAlwaysOnTop(true, 'screen-saver');
   send('panel:mode', mode());
+  if (changed) savePosition();
   refreshTray();
 }
 
@@ -161,6 +165,7 @@ async function start() {
   let point;
   try { point = readJson(layoutFile); }
   catch (error) { console.warn('Could not restore panel position:', error.message); }
+  locked = point?.locked === true;
   const remembered = findDisplay(screen.getAllDisplays(), point);
   const area = (remembered ?? screen.getPrimaryDisplay()).workArea;
   if (Number.isFinite(point?.size?.width) && Number.isFinite(point?.size?.height) &&
@@ -168,7 +173,13 @@ async function start() {
   const icon = nativeImage.createFromPath(path.join(root, 'assets', 'icon.png'));
   const trayIcon = mac
     ? nativeImage.createFromPath(path.join(root, 'assets', 'trayTemplate.png'))
-    : icon.resize({ width: 24, height: 24 });
+    : nativeImage.createEmpty();
+  if (!mac) {
+    for (const px of [16, 20, 24, 32, 40, 48]) {
+      const image = nativeImage.createFromPath(path.join(root, 'assets', `tray-${px}.png`));
+      trayIcon.addRepresentation({ scaleFactor: px / 16, buffer: image.toPNG() });
+    }
+  }
   if (mac) trayIcon.setTemplateImage(true);
   tray = new Tray(trayIcon);
   if (!mac) tray.on('click', showEditor);
@@ -202,6 +213,9 @@ async function start() {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.webContents.on('will-attach-webview', event => event.preventDefault());
+  unlockButton = unlockControl(win, root, () => setLocked(false), error =>
+    dialog.showErrorBox('Unlock button unavailable', `${error.message}\nChoose Show & edit Questlog from the tray to unlock.`));
+  ipcMain.on('panel:unlock-bounds', (e, box) => { if (fromPanel(e) && locked) unlockButton.bounds(box); });
   const timerFile = path.join(data, 'timer.json');
   try {
     timer = countdown({
@@ -315,6 +329,7 @@ async function start() {
   });
   win.on('closed', () => { win = undefined; });
   await win.loadFile(path.join(root, 'app', 'index.html'));
+  if (locked) setLocked(true);
   win.showInactive();
   updater?.start();
   // Fully transparent pixels and click-through windows do not reliably receive mouseenter.

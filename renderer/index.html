@@ -37,10 +37,8 @@
         <feComposite id="dither-mix" in="textured" in2="SourceGraphic" operator="arithmetic" k2="1" k3="0"/>
       </filter>
     </defs>
-    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9.5 3-.8 2.4-2 .9-2.4-.6-1.6 2.8 1.7 1.8v2.5L2.7 15l1.6 2.8 2.4-.6 2 .9.8 2.4h3.2l.8-2.4 2.1-.9 2.4.6 1.6-2.8-1.7-2.2v-2.5l1.7-1.8L18 5.7l-2.4.6-2.1-.9-.8-2.4z"/><circle cx="11.2" cy="11.8" r="3.1"/></symbol>
     <symbol id="i-block" viewBox="0 0 12 16"><path fill="currentColor" stroke="none" d="M2 2h2v2H2zm5 0h2v2H7zM2 7h2v2H2zm5 0h2v2H7zM2 12h2v2H2zm5 0h2v2H7z"/></symbol>
-    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5zM14 20v-5h5M8 8h8M8 11h5"/></symbol>
     <symbol id="i-open" viewBox="0 0 24 24"><rect x="5.5" y="10" width="13" height="10" rx="2"/><path d="M8.5 10V7a3.5 3.5 0 0 1 6.8-1M12 14v2"/></symbol>
     <symbol id="i-closed" viewBox="0 0 24 24"><rect x="5.5" y="10" width="13" height="10" rx="2"/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3M12 14v2"/></symbol>
   </svg>
@@ -54,10 +52,8 @@
       </div>
       <time id="header-clock" aria-live="off" title="Current local time and date"></time>
       <div class="tools" role="group" aria-label="Overlay controls">
-        <button id="append" aria-label="Insert item" title="Insert item (Enter)"><svg><use href="#i-plus"/></svg></button>
-        <button id="toggle-notes" aria-label="Notepad" title="Show or hide notepad" aria-controls="notes" aria-expanded="false"><svg><use href="#i-note"/></svg></button>
         <button id="gear" aria-label="Settings" title="Settings" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#i-settings"/></svg></button>
-        <button id="lock" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button>
+        <span id="lock-slot"><button id="lock" popover="manual" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button></span>
         <button id="fold" aria-label="Minimize to header and timer" title="Minimize to header and timer" aria-expanded="true" aria-controls="writing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
       </div>
     </header>
@@ -83,6 +79,7 @@
       <label>Text color <input id="text-color" type="color"></label>
       <label><input id="fade-text" type="checkbox"> Fade text too</label>
       <label>Typeface <select id="typeface"></select></label>
+      <label><input id="toggle-notes" type="checkbox" aria-controls="notes-wrap"> Show notepad</label>
       <button id="fit-content" type="button">Fit window to content</button>
     </section>
     <div id="notice" role="alert" hidden></div>

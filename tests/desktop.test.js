@@ -8,6 +8,11 @@ import { _electron as electron } from 'playwright-core';
 
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 
+async function openNotes(page) {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Show notepad' }).check();
+}
+
 test('Windows whole-display capture omits or blanks the visible overlay', { skip: process.platform !== 'win32', timeout: 40_000 }, async () => {
   const profile = await mkdtemp(path.join(tmpdir(), 'questlog-capture-'));
   let app;
@@ -77,7 +82,7 @@ test('minimize to the full header and timer, restore size, and recover from both
         try { await w.evaluate(win => win.showInactive()); } finally { await w.dispose(); }
       }
       p.setDefaultTimeout(4500);
-      await p.locator('#toggle-notes').click();
+      await openNotes(p);
       await p.locator('#notes').fill('Return to camp');
       await p.locator('#timer-start').click();
       const fold = p.getByRole('button', { name: 'Minimize to header and timer' });
@@ -92,6 +97,7 @@ test('minimize to the full header and timer, restore size, and recover from both
           const el = window.questlog ? document.documentElement : document.getElementById('panel');
           return [el.clientWidth, el.clientHeight];
         });
+        if (p === page) await p.waitForFunction(() => innerHeight === Math.ceil(document.getElementById('panel').getBoundingClientRect().height));
         const before = await bounds();
         const titleGesture = p === preview && manual;
         if (titleGesture) await p.locator('#overlay-title').dblclick(); else await fold.click();
@@ -122,9 +128,18 @@ test('minimize to the full header and timer, restore size, and recover from both
             await p.mouse.move(box.x + 8, box.y + 8);
           } else await p.mouse.move(1, 1);
         } else {
-          // Use the same event as the OS cursor poller without moving the user's mouse.
+          // Feed the real cursor poller a consistent fixture point without moving the user's mouse.
           const win = await app.browserWindow(p);
-          try { await win.evaluate((w, hot) => w.webContents.send('panel:hover', hot), inside); }
+          try {
+            const id = await win.evaluate(w => w.id);
+            await app.evaluate(({ screen, BrowserWindow }, { id, inside }) => {
+              screen.getCursorScreenPoint = () => {
+                const { x, y } = BrowserWindow.fromId(id).getBounds();
+                return inside ? { x: x + 8, y: y + 8 } : { x: x - 5, y: y - 5 };
+              };
+            }, { id, inside });
+            await p.waitForFunction(hot => document.getElementById('panel').classList.contains('hot') === hot, inside);
+          }
           finally { await win.dispose(); }
         }
       };
@@ -317,7 +332,7 @@ test('typed and pasted addresses link without a toolbar or dialog; a hidden time
     assert.equal(await link.textContent(), 'https://example.com/trailhead');
     await textbox.press('Control+a'); await textbox.press('Control+b');
     assert.equal(await page.getByRole('toolbar').count(), 0);
-    await page.getByRole('button', { name: 'Notepad', exact: true }).click();
+    await openNotes(page);
     const notes = page.getByRole('textbox', { name: 'Notepad' });
     await notes.evaluate(el => {
       const clipboardData = new DataTransfer();
@@ -405,7 +420,7 @@ test('typed and pasted addresses link without a toolbar or dialog; a hidden time
     await page.getByRole('button', { name: 'Lock overlay' }).click();
     assert.ok(await bar.isVisible()); assert.ok(await time.evaluate(el => el.readOnly));
     assert.ok(await stop.isVisible()); assert.ok(await stop.isDisabled());
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].hide());
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'QUESTS').hide());
     await page.waitForFunction(() => document.getElementById('countdown').dataset.status === 'done', null, { polling: 100 });
     assert.deepEqual(await app.evaluate(() => globalThis.timerEffects), { pings: 1, toasts: 1 });
     await app.evaluate(({ app }) => app.emit('second-instance', {}, [], '', {}));
@@ -453,7 +468,7 @@ test('rich blocks, hover drag, opacity settings and a persistent two-axis window
         await page.waitForTimeout(100);
         assert.equal(await app.evaluate(() => globalThis.testOpenedLink), 'https://example.com/trail');
 
-        await page.getByRole('button', { name: 'Insert item' }).click();
+        await field.press('End'); await field.press('Enter');
         await page.getByRole('textbox', { name: 'New item' }).fill('Pack water');
         const water = page.getByRole('textbox', { name: 'Item: Pack water', exact: true });
         await water.press('Home');
@@ -497,7 +512,7 @@ test('rich blocks, hover drag, opacity settings and a persistent two-axis window
         assert.deepEqual(await rows.evaluateAll(rs => rs.map(r => [r.dataset.kind, r.querySelector('.words').textContent])),
           [['paragraph', 'Meet at camp'], ['todo', 'Trail map'], ['bullet', 'Pack water']]);
         assert.ok(await page.getByRole('checkbox', { name: 'Complete: Trail map' }).isChecked());
-        await page.getByRole('button', { name: 'Notepad' }).click();
+        await openNotes(page);
         const notes = page.getByRole('textbox', { name: 'Notepad' });
         await notes.fill('Bring a lamp'); await notes.press('Control+a'); await notes.press('Control+i');
         assert.equal(await notes.locator('em').textContent(), 'Bring a lamp');
@@ -588,7 +603,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       await page.getByRole('button', { name: 'Done', exact: true }).click();
       assert.equal(await page.locator('#dev-panel, #toggle-dev, #move > svg').count(), 0);
       assert.deepEqual(await page.locator('.tools button').evaluateAll(bs => bs.map(b => b.getAttribute('aria-label'))),
-        ['Insert item', 'Notepad', 'Settings', 'Lock overlay', 'Minimize to header and timer']);
+        ['Settings', 'Lock overlay', 'Minimize to header and timer']);
     });
     const check = page.getByRole('checkbox', { name: 'Complete: Mark the map', exact: true });
     await check.click();
@@ -599,7 +614,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
     await words.fill('Mark two trails');
     assert.ok(await page.getByRole('checkbox', { name: 'Complete: Mark two trails' }).isChecked());
     await page.getByRole('textbox', { name: 'Item: Pack the lamp' }).fill('');
-    await page.getByRole('button', { name: 'Notepad' }).click();
+    await openNotes(page);
     await page.getByRole('textbox', { name: 'Notepad' }).fill('Camp is east of the river.\nBring a lamp.');
     assert.equal(await page.locator('#items li').count(), 1);
     assert.equal(await page.getByRole('button', { name: /^Move (up|down):/ }).count(), 0);
@@ -681,10 +696,10 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       }
     });
     await page.getByRole('textbox', { name: 'Notepad' }).fill('Camp is east of the river.\nBring two lamps.');
-    await page.getByRole('button', { name: 'Lock overlay' }).click();
+    const [unlockPage] = await Promise.all([app.waitForEvent('window'), page.getByRole('button', { name: 'Lock overlay' }).click()]);
     await page.waitForSelector('html.locked', { state: 'attached' });
-    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFocusable()), false);
-    await app.evaluate(({ app }) => app.emit('second-instance', {}, [], '', {}));
+    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'QUESTS').isFocusable()), false);
+    await unlockPage.getByRole('button', { name: 'Unlock overlay' }).click();
     await page.waitForSelector('html:not(.locked)', { state: 'attached' });
     assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isAlwaysOnTop()), true);
     await app.close();

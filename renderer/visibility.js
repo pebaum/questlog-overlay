@@ -59,7 +59,7 @@ export function bindVisibility(panel, native, preference, fit, initiallyHot, clo
     };
   }
   function eligible() {
-    return !hot && !held && !manual && !dragging && settings.hidden && preference() !== 'off' &&
+    return !document.documentElement.classList.contains('locked') && !hot && !held && !manual && !dragging && settings.hidden && preference() !== 'off' &&
       !(document.hasFocus() && document.activeElement !== icon && panel.contains(document.activeElement) &&
         document.activeElement.matches('.rich, #timer-time, :focus-visible'));
   }
@@ -108,5 +108,7 @@ export function bindVisibility(panel, native, preference, fit, initiallyHot, clo
   window.addEventListener('pagehide', () => { clearTimeout(timer); cancelMotion(); });
   window.addEventListener('pageshow', refresh);
   refresh();
-  return { reveal, refresh };
+  return { reveal, refresh, syncLock() {
+    clearTimeout(timer); cancelMotion(); auto = 'off'; render(); refresh();
+  } };
 }

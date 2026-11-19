@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('questlog', {
     ipcRenderer.send('timer:watch');
   },
   toggleLock: () => ipcRenderer.send('panel:toggle-lock'),
+  unlockBounds: box => ipcRenderer.send('panel:unlock-bounds', box),
   onReveal: callback => ipcRenderer.on('panel:reveal', () => callback()),
   onTitleDoubleClick: callback => ipcRenderer.on('panel:toggle-compact', () => callback()),
   hide: () => ipcRenderer.send('panel:hide'),
