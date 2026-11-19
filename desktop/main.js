@@ -185,6 +185,10 @@ async function start() {
     }
   });
   if (process.platform === 'win32') {
+    // Windows delivers double-clicks on Electron drag regions as non-client caption messages, not DOM clicks.
+    win.hookWindowMessage(0x00a3 /* WM_NCLBUTTONDBLCLK */, hit => {
+      if (hit.readUInt32LE(0) === 2 /* HTCAPTION */ && !locked) send('panel:toggle-compact');
+    });
     // Apply this to the hidden native window, before any journal content is loaded.
     win.setContentProtection(true);
     if (!win.isContentProtected()) {

@@ -284,7 +284,7 @@ function showNotes() {
 function setMode(next) {
   mode = next;
   if (locked()) { document.activeElement?.blur(); closeSettings(); clearEmptyRows(); cancelDrag?.(); }
-  root.classList.toggle('locked', locked()); $('move').title = locked() ? '' : 'Drag to move';
+  root.classList.toggle('locked', locked()); $('move').title = locked() ? '' : 'Drag to move; double-click to minimize or restore';
   syncTimerMode?.();
   for (const [row, v] of editors) { v.setProps({}); updateRow(row); }
   note.setProps({}); syncOrder(); showNotes();

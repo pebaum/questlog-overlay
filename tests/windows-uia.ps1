@@ -92,6 +92,12 @@ using System.Runtime.InteropServices;
 public static class QuestlogHitTest {
     [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr w, uint msg, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
+    public static void DoubleClickCaption(int handle, int x, int y) {
+        int hit = At(handle, x, y);
+        if (hit != 2) throw new Exception("Test point is not on the native caption");
+        IntPtr result;
+        if (SendMessageTimeout(new IntPtr(handle), 0xA3, new IntPtr(hit), new IntPtr(unchecked((y << 16) | (x & 65535))), 2, 1500, out result) == IntPtr.Zero) throw new Exception("Caption double-click timed out");
+    }
     public static int At(int handle, int x, int y) {
         var old = SetThreadDpiAwarenessContext(new IntPtr(-4));
         try {
@@ -109,6 +115,12 @@ public static class QuestlogHitTest {
         if ([QuestlogHitTest]::At($hwnd,$x,$y) -ne 2) { throw 'The heading and the blank part of its bar must both move the native window' }
     }
     if ([QuestlogHitTest]::At($hwnd,($add.Left + $add.Width/2),$y) -ne 1) { throw 'Header buttons must not initiate dragging' }
+    $x = [int]($window.Current.BoundingRectangle.Left + 18)
+    [QuestlogHitTest]::DoubleClickCaption($hwnd,$x,$y)
+    [void](Control 'Restore overlay' ([System.Windows.Automation.ControlType]::Button))
+    [void](Control 'Timer time' ([System.Windows.Automation.ControlType]::Edit))
+    [QuestlogHitTest]::DoubleClickCaption($hwnd,$x,$y)
+    [void](Control 'Minimize to header and timer' ([System.Windows.Automation.ControlType]::Button))
 }
 function Stop-Fixture {
     if ($process -and !$process.HasExited) {
@@ -122,7 +134,7 @@ function Stop-Fixture {
 try {
     Start-Fixture
     [void](Wait-For 'the disposable journal' { Test-Path -LiteralPath (Join-Path $profileDir 'journal.json') })
-    $initial = Editor 'New item'
+    [void](Editor 'New item')
     Assert-CaptureProtection
     Assert-TitleDrag
     Invoke-Button 'Settings'
@@ -134,6 +146,7 @@ try {
     Invoke-Button 'Start timer'
     Invoke-Button 'Stop timer'
     [void](Control 'Start timer' ([System.Windows.Automation.ControlType]::Button))
+    $initial = Editor 'New item'
     (Text-Value $initial).SetValue('Mark the map')
     # UIA actions are asynchronous; wait for the first editor to leave its draft state.
     [void](Editor 'Item: Mark the map')

@@ -89,7 +89,9 @@ test('minimize to the full header and timer, restore size, and recover from both
           return [el.clientWidth, el.clientHeight];
         });
         const before = await bounds();
-        await fold.click(); await restore.waitFor();
+        const titleGesture = p === preview && manual;
+        if (titleGesture) await p.locator('#overlay-title').dblclick(); else await fold.click();
+        await restore.waitFor();
         assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());
         assert.ok(await p.locator('#writing').isHidden() && await p.locator('#header-clock').isVisible());
         assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible() && await p.locator('#gear').isVisible());
@@ -99,7 +101,8 @@ test('minimize to the full header and timer, restore size, and recover from both
           return height < previous && Math.ceil(document.getElementById('countdown').getBoundingClientRect().bottom - panel.getBoundingClientRect().top) <= height;
         }, before[1]);
         assert.equal((await bounds())[0], before[0]);
-        await restore.press('Enter'); await fold.waitFor();
+        if (titleGesture) await p.locator('#overlay-title').dblclick(); else await restore.press('Enter');
+        await fold.waitFor();
         await p.waitForFunction(([w,h]) => {
           const el = window.questlog ? document.documentElement : document.getElementById('panel');
           return el.clientWidth === w && el.clientHeight === h;

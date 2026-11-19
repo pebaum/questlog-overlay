@@ -40,13 +40,17 @@ export function bindVisibility(panel, native, preference, fit, initiallyHot, clo
     hot = inside; held = false; panel.classList.toggle('hot', inside); refresh();
   }
   icon.onclick = () => { reveal(); fold.focus({ preventScroll: true }); };
-  fold.onclick = () => {
+  function toggleCompact() {
     if (document.documentElement.classList.contains('locked')) return;
     if (manual || auto === 'compact') { reveal(); return; }
     closeSettings(); manual = true; auto = 'off'; render(); refresh();
-  };
-  if (native) { native.onHover(hover); native.onReveal(reveal); }
+  }
+  fold.onclick = toggleCompact;
+  if (native) { native.onHover(hover); native.onReveal(reveal); native.onTitleDoubleClick(toggleCompact); }
   else {
+    panel.querySelector('#move').addEventListener('dblclick', e => {
+      if (e.button === 0 && !e.target.closest('button')) toggleCompact();
+    });
     panel.addEventListener('pointerenter', () => hover(true));
     panel.addEventListener('pointerleave', () => hover(false));
   }
