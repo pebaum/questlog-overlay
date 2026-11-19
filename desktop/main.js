@@ -16,7 +16,7 @@ app.setName('Questlog');
 if (process.platform === 'win32') app.setAppUserModelId('app.questlog.desktop');
 
 let win, tray, journal, journalFile, layoutFile, editTimer, positionTimer;
-let locked = false, shortcut = false, dirty = false, quitting = false;
+let locked = false, folded = false, shortcut = false, dirty = false, quitting = false;
 let requestedHeight = 100, manualSize, hoverTimer, hot = false;
 let timer, timerIssue;
 function send(channel, payload) {
@@ -62,7 +62,7 @@ function savePosition() {
 }
 
 function mode() {
-  return { locked, shortcut: shortcut ? (mac ? 'Cmd + Shift + Space' : 'Ctrl + Shift + Space') : null };
+  return { locked, folded, shortcut: shortcut ? (mac ? 'Cmd + Shift + Space' : 'Ctrl + Shift + Space') : null };
 }
 
 let checking = false;
@@ -123,6 +123,7 @@ function setLocked(next) {
 
 function showEditor() {
   if (!win || win.isDestroyed()) return;
+  if (folded) { folded = false; resizePanel(); }
   setLocked(false);
   win.show();
   win.focus();
@@ -136,7 +137,9 @@ function resizePanel(reset = false) {
   const display = reset ? screen.getPrimaryDisplay() : screen.getDisplayMatching(current);
   const limit = manualSize ? display.workArea.height : heightLimit(display.workArea);
   send('panel:limit', limit);
-  const bounds = fitPanel(display.workArea, reset ? null : current, Math.min(manualSize?.height ?? requestedHeight, limit), manualSize?.width);
+  const point = reset ? null : current;
+  const bounds = folded ? fitPanel(display.workArea, point, 40, 156, 156)
+    : fitPanel(display.workArea, point, Math.min(manualSize?.height ?? requestedHeight, limit), manualSize?.width);
   if (['x', 'y', 'width', 'height'].some(k => current[k] !== bounds[k])) win.setBounds(bounds);
 }
 
@@ -233,7 +236,7 @@ async function start() {
     return shell.openExternal(url);
   });
   ipcMain.on('panel:size', (e, s) => {
-    if (!fromPanel(e) || locked || !Number.isFinite(s?.width) || !Number.isFinite(s?.height)) return;
+    if (!fromPanel(e) || locked || folded || !Number.isFinite(s?.width) || !Number.isFinite(s?.height)) return;
     const bounds = win.getBounds(), area = screen.getDisplayMatching(bounds).workArea;
     manualSize = {
       width: Math.min(Math.max(240, Math.round(s.width)), Math.max(240, area.x + area.width - bounds.x)),
@@ -244,18 +247,24 @@ async function start() {
     positionTimer = setTimeout(savePosition, 250);
   });
   ipcMain.on('panel:auto-size', e => {
-    if (!fromPanel(e) || locked) return;
+    if (!fromPanel(e) || locked || folded) return;
     manualSize = undefined;
     resizePanel();
     savePosition();
   });
   ipcMain.on('journal:save', (e, value) => { if (fromPanel(e)) saveLater(value); });
   ipcMain.on('panel:fit', (e, h) => {
-    if (!fromPanel(e) || manualSize || !Number.isFinite(h) || h <= 0) return;
+    if (!fromPanel(e) || manualSize || folded || !Number.isFinite(h) || h <= 0) return;
     requestedHeight = h;
     resizePanel();
   });
   ipcMain.on('panel:toggle-lock', e => { if (fromPanel(e)) setLocked(!locked); });
+  ipcMain.on('panel:toggle-fold', e => {
+    if (!fromPanel(e) || locked) return;
+    folded = !folded;
+    send('panel:mode', mode());
+    resizePanel();
+  });
   ipcMain.on('panel:hide', e => { if (fromPanel(e)) win.hide(); });
   ipcMain.on('panel:quit', e => { if (fromPanel(e)) app.quit(); });
   shortcut = globalShortcut.register(accelerator, () => {

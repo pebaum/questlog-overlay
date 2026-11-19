@@ -61,6 +61,54 @@ test('Windows whole-display capture omits or blanks the visible overlay', { skip
   }
 });
 
+test('minimize to the title and restore content, running timer and window size', { timeout: 45_000 }, async () => {
+  const profile = await mkdtemp(path.join(tmpdir(), 'questlog-title-'));
+  let app;
+  try {
+    app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
+    const page = await app.firstWindow();
+    const [preview] = await Promise.all([app.waitForEvent('window'), app.evaluate(async ({ BrowserWindow }, file) => {
+      const w = new BrowserWindow({ width: 650, height: 420, show: false });
+      await w.loadFile(file);
+    }, path.join(root, 'app', 'index.html'))]);
+    for (const p of [page, preview]) {
+      p.setDefaultTimeout(4500);
+      await p.locator('#toggle-notes').click();
+      await p.locator('#notes').fill('Return to camp');
+      await p.locator('#timer-start').click();
+      const fold = p.getByRole('button', { name: 'Minimize to title' });
+      const restore = p.getByRole('button', { name: 'Restore overlay' });
+      for (const manual of [false, true]) {
+        if (manual) {
+          await p.locator('#resize').press('ArrowDown');
+          await p.waitForFunction(() => document.getElementById('panel').classList.contains('manual'));
+        }
+        const bounds = () => p.evaluate(() => {
+          const el = window.questlog ? document.documentElement : document.getElementById('panel');
+          return [el.clientWidth, el.clientHeight];
+        });
+        const before = await bounds();
+        await fold.click(); await restore.waitFor();
+        assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());
+        assert.deepEqual(await p.locator('#panel button:visible').evaluateAll(bs => bs.map(b => b.id)), ['fold']);
+        assert.ok(await p.locator('#writing').isHidden() && await p.locator('#countdown').isHidden() && await p.locator('#header-clock').isHidden());
+        await p.waitForFunction(() => (window.questlog ? innerWidth : document.getElementById('panel').offsetWidth) < 200);
+        assert.ok((await bounds())[1] <= 40);
+        await restore.press('Enter'); await fold.waitFor();
+        await p.waitForFunction(([w,h]) => {
+          const el = window.questlog ? document.documentElement : document.getElementById('panel');
+          return el.clientWidth === w && el.clientHeight === h;
+        }, before);
+        assert.equal(await p.locator('#notes').innerText(), 'Return to camp');
+        assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible());
+      }
+    }
+  } finally {
+    try { await app?.close(); }
+    finally { await rm(profile, { force: true, recursive: true, maxRetries: 4, retryDelay: 150 }); }
+  }
+});
+
 async function exerciseInitialRows(page, t) {
     const blank = page.getByRole('textbox', { name: 'New item', exact: true });
     assert.ok(await blank.evaluate(e => !e.hasAttribute('data-placeholder') && ['none', 'normal'].includes(getComputedStyle(e, '::before').content)));
@@ -435,7 +483,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       await page.getByRole('button', { name: 'Done', exact: true }).click();
       assert.equal(await page.locator('#dev-panel, #toggle-dev, #move > svg').count(), 0);
       assert.deepEqual(await page.locator('.tools button').evaluateAll(bs => bs.map(b => b.getAttribute('aria-label'))),
-        ['Insert item', 'Notepad', 'Settings', 'Lock overlay']);
+        ['Insert item', 'Notepad', 'Settings', 'Lock overlay', 'Minimize to title']);
     });
     const check = page.getByRole('checkbox', { name: 'Complete: Mark the map', exact: true });
     await check.click();

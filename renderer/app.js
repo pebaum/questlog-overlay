@@ -34,8 +34,8 @@ function save() {
   } catch (e) { notice(`Changes not saved: ${e.message}`); }
 }
 function fit() {
-  if (!native || panel.classList.contains('manual')) return;
   cancelAnimationFrame(frame);
+  if (!native || mode.folded || panel.classList.contains('manual')) return;
   frame = requestAnimationFrame(() => native.fit(Math.ceil(panel.getBoundingClientRect().height)));
 }
 function appearance() {
@@ -59,7 +59,7 @@ function closeSettings() {
   $('gear').setAttribute('aria-expanded', 'false');
 }
 function openSettings() {
-  if (locked()) return;
+  if (locked() || mode.folded) return;
   $('settings').hidden = false; $('gear').setAttribute('aria-expanded', 'true'); $('idle-opacity').focus();
 }
 function openLink(href) {
@@ -263,6 +263,18 @@ function showNotes() {
 }
 function setMode(next) {
   mode = next;
+  if (next.folded && !panel.classList.contains('folded')) {
+    closeSettings(); cancelDrag?.();
+    if (!native && !panel.classList.contains('placed')) {
+      const { left, top } = panel.getBoundingClientRect();
+      panel.style.left = `${left}px`; panel.style.top = `${top}px`; panel.classList.add('placed');
+    }
+  }
+  panel.classList.toggle('folded', !!next.folded);
+  const fold = $('fold');
+  fold.title = next.folded ? 'Restore overlay' : 'Minimize to title';
+  fold.setAttribute('aria-label', fold.title); fold.setAttribute('aria-expanded', String(!next.folded));
+  fold.querySelector('path').setAttribute('d', next.folded ? 'M5 5h14v14H5z' : 'M5 12h14');
   if (locked()) { document.activeElement?.blur(); closeSettings(); clearEmptyRows(); cancelDrag?.(); }
   root.classList.toggle('locked', locked()); $('move').title = locked() ? '' : 'Drag to move';
   syncTimerMode?.();
@@ -310,6 +322,9 @@ async function init() {
     showNotes(); clearEmptyRows(); save(); if (journal.notesOpen) note.focus();
   };
   $('lock').onclick = () => native ? native.toggleLock() : setMode({ ...mode, locked: !locked() });
+  $('fold').onclick = () => {
+    if (!locked()) { if (native) native.toggleFold(); else setMode({ ...mode, folded: !mode.folded }); }
+  };
   document.addEventListener('click', clearEmptyRows); document.addEventListener('keyup', clearEmptyRows);
   syncTimerMode = initTimer(native, locked, notice);
   appearance(); setMode(mode); new ResizeObserver(fit).observe(panel);

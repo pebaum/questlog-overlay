@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('questlog', {
     ipcRenderer.send('timer:watch');
   },
   toggleLock: () => ipcRenderer.send('panel:toggle-lock'),
+  toggleFold: () => ipcRenderer.send('panel:toggle-fold'),
   hide: () => ipcRenderer.send('panel:hide'),
   quit: () => ipcRenderer.send('panel:quit'),
   onMode: callback => ipcRenderer.on('panel:mode', (_event, mode) => callback(mode)),

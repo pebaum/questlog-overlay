@@ -160,8 +160,8 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .locked .topline { cursor: default; }
 .tools { display: flex; align-items: center; margin-inline-start: auto; gap: 2px; opacity: 0; transition: opacity 120ms ease-out; }
 #panel:hover .tools, #panel:focus-within .tools, #panel:has(.line.empty:only-child) .tools { opacity: 1; }
-.tools button { display: grid; place-items: center; width: 29px; height: 24px; border-radius: 4px; }
-.tools button:hover, .tools button[aria-expanded="true"] { background: color-mix(in srgb, var(--cp-smoke) 36%, transparent); }
+.tools button { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; }
+.tools button:hover, .tools button[aria-expanded="true"]:not(#fold) { background: color-mix(in srgb, var(--cp-smoke) 36%, transparent); }
 .tools svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 1px 1px var(--cp-smoke)); }
 @container (max-width: 320px) {
   .topline { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "title tools" "readout readout"; }
@@ -173,6 +173,12 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
   display: flex; flex: none; align-items: center; min-height: 24px; margin: 0 4px 2px;
   font: var(--item-size)/var(--leading) var(--journal-face); text-shadow: var(--ink-shadow);
 }
+#panel.folded { padding-bottom: 2px; }
+html:not(.desktop) #panel.folded { width: min(156px, 100vw) !important; height: 40px !important; }
+#panel.folded .topline { display: flex; flex-wrap: nowrap; flex: 1; }
+#panel.folded .tools { opacity: 1; }
+#panel.folded :is(#header-clock, #writing, #countdown, #resize, #notice),
+#panel.folded .tools > :not(#fold) { display: none; }
 #timer-time {
   field-sizing: content; min-width: 4ch; max-width: 8ch; min-height: 24px; margin: 0; padding: 0;
   border: 0; background: transparent; color: inherit; caret-color: var(--cp-ivory); text-shadow: inherit; font-variant-numeric: tabular-nums;
