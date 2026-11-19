@@ -52,6 +52,7 @@ function appearance() {
   $('background-color').value = journal.backgroundColor;
   $('text-color').value = journal.textColor;
   panel.classList.toggle('fade-text', journal.fadeText);
+  panel.classList.toggle('auto-hide', journal.autoHide !== 'off');
   $('auto-hide').value = journal.autoHide;
   s.setProperty('--screen-fx', journal.dither ? 'url("#screen-dither")' : 'none');
   $('dither-mix').setAttribute('k2', journal.dither / 100); $('dither-mix').setAttribute('k3', 1 - journal.dither / 100);

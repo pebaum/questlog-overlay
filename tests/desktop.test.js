@@ -68,10 +68,14 @@ test('minimize to the full header and timer, restore size, and recover from both
     app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
     const page = await app.firstWindow();
     const [preview] = await Promise.all([app.waitForEvent('window'), app.evaluate(async ({ BrowserWindow }, file) => {
-      const w = new BrowserWindow({ width: 650, height: 420, show: false });
+      const w = new BrowserWindow({ width: 650, height: 420, show: false, webPreferences: { backgroundThrottling: false } });
       await w.loadFile(file);
     }, path.join(root, 'app', 'index.html'))]);
     for (const p of [page, preview]) {
+      if (p === preview) {
+        const w = await app.browserWindow(preview);
+        try { await w.evaluate(win => win.showInactive()); } finally { await w.dispose(); }
+      }
       p.setDefaultTimeout(4500);
       await p.locator('#toggle-notes').click();
       await p.locator('#notes').fill('Return to camp');
@@ -125,6 +129,7 @@ test('minimize to the full header and timer, restore size, and recover from both
         }
       };
       for (const behavior of ['compact', 'icon']) {
+        await p.emulateMedia({ reducedMotion: 'no-preference' });
         await p.locator('#gear').click();
         await p.getByLabel('Auto-hide').selectOption(behavior);
         await p.getByLabel('Idle opacity').fill('24'); await p.getByLabel('Hover opacity').fill('85');
@@ -132,6 +137,16 @@ test('minimize to the full header and timer, restore size, and recover from both
         await p.locator('#settings-done').click();
         await p.evaluate(() => document.activeElement.blur());
         await hover(true); await hover(false);
+        const midFade = () => p.waitForFunction(() => {
+          const opacity = +getComputedStyle(document.getElementById('writing')).opacity;
+          return opacity > .05 && opacity < .95 && document.getElementById('writing').offsetHeight > 0;
+        });
+        if (p === preview && behavior === 'compact') {
+          await midFade(); await hover(true);
+          await p.waitForFunction(() => !document.getElementById('writing').getAnimations().length &&
+            document.getElementById('writing').offsetHeight > 0 && +getComputedStyle(document.getElementById('writing')).opacity === 1);
+          await hover(false);
+        }
         if (behavior === 'compact') {
           await restore.waitFor();
           assert.ok(await p.locator('#writing').isHidden());
@@ -146,10 +161,16 @@ test('minimize to the full header and timer, restore size, and recover from both
         }
         await p.waitForFunction(() => +getComputedStyle(document.getElementById('panel')).opacity === .24);
         await hover(true);
+        await midFade();
         await p.waitForFunction(() => document.getElementById('writing').offsetHeight > 0 && +getComputedStyle(document.getElementById('panel')).opacity === .85);
         assert.equal(await p.locator('#notes').innerText(), 'Return to camp');
         assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible());
       }
+      await p.emulateMedia({ reducedMotion: 'reduce' });
+      await hover(false); await p.locator('#reveal-icon').waitFor();
+      await hover(true);
+      await p.waitForFunction(() => document.getElementById('writing').offsetHeight > 0);
+      assert.equal(await p.locator('#writing').evaluate(el => el.getAnimations().length), 0);
     }
   } finally {
     try { await app?.close(); }
