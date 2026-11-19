@@ -139,8 +139,8 @@ function resizePanel(reset = false) {
   const limit = manualSize ? display.workArea.height : heightLimit(display.workArea);
   send('panel:limit', limit);
   const point = reset ? null : current;
-  const bounds = folded ? fitPanel(display.workArea, point, 40, 156, 156)
-    : fitPanel(display.workArea, point, Math.min(manualSize?.height ?? requestedHeight, limit), manualSize?.width);
+  const height = folded ? 40 : Math.min(manualSize?.height ?? requestedHeight, limit);
+  const bounds = fitPanel(display.workArea, point, height, manualSize?.width);
   if (['x', 'y', 'width', 'height'].some(k => current[k] !== bounds[k])) win.setBounds(bounds);
 }
 

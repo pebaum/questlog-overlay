@@ -45,6 +45,10 @@ function appearance() {
   s.setProperty('--text-size', `${journal.textSize / 16}rem`); s.setProperty('--title-size', `${journal.titleSize / 16}rem`);
   s.setProperty('--row-gap', `${journal.rowGap}px`); s.setProperty('--leading', journal.lineHeight / 100);
   s.setProperty('--idle', `${journal.opacity}%`); s.setProperty('--hover', `${journal.hoverOpacity}%`);
+  s.setProperty('--cp-smoke', journal.backgroundColor);
+  s.setProperty('--cp-ivory', journal.textColor);
+  $('background-color').value = journal.backgroundColor;
+  $('text-color').value = journal.textColor;
   panel.classList.toggle('fade-text', journal.fadeText);
   s.setProperty('--screen-fx', journal.dither ? 'url("#screen-dither")' : 'none');
   $('dither-mix').setAttribute('k2', journal.dither / 100); $('dither-mix').setAttribute('k3', 1 - journal.dither / 100);
@@ -81,6 +85,9 @@ function bindSettings() {
     appearance(); save();
   };
   $('fade-text').onchange = () => { journal.fadeText = $('fade-text').checked; appearance(); save(); };
+  for (const [id, key] of [['background-color', 'backgroundColor'], ['text-color', 'textColor']]) {
+    $(id).oninput = () => { journal[key] = $(id).value; appearance(); save(); };
+  }
   for (const [id, f] of Object.entries(typefaces)) $('typeface').add(new Option(f.name, id));
   $('typeface').onchange = () => { journal.typeface = $('typeface').value; appearance(); save(); };
   $('fit-content').onclick = () => { closeSettings(); resetSize(); fit(); };

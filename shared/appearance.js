@@ -3,7 +3,10 @@ export const appearanceRanges = Object.freeze({
   opacity: [0, 100], dither: [0, 100], pixelSize: [1, 3]
 });
 
+export const defaultColors = Object.freeze({ backgroundColor: '#131210', textColor: '#f4f1eb' });
+
 export const defaultAppearance = Object.freeze({
+  ...defaultColors,
   typeface: 'dotgothic16', rowGap: 0, lineHeight: 110, textSize: 16, titleSize: 20,
   opacity: 6, dither: 100, pixelSize: 1
 });

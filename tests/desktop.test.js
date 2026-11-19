@@ -80,6 +80,7 @@ test('minimize to the title and restore content, running timer and window size',
       const restore = p.getByRole('button', { name: 'Restore overlay' });
       for (const manual of [false, true]) {
         if (manual) {
+          await p.locator('#resize').press('ArrowLeft');
           await p.locator('#resize').press('ArrowDown');
           await p.waitForFunction(() => document.getElementById('panel').classList.contains('manual'));
         }
@@ -92,8 +93,8 @@ test('minimize to the title and restore content, running timer and window size',
         assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());
         assert.deepEqual(await p.locator('#panel button:visible').evaluateAll(bs => bs.map(b => b.id)), ['fold']);
         assert.ok(await p.locator('#writing').isHidden() && await p.locator('#countdown').isHidden() && await p.locator('#header-clock').isHidden());
-        await p.waitForFunction(() => (window.questlog ? innerWidth : document.getElementById('panel').offsetWidth) < 200);
-        assert.ok((await bounds())[1] <= 40);
+        await p.waitForFunction(() => (window.questlog ? innerHeight : document.getElementById('panel').offsetHeight) <= 40);
+        assert.equal((await bounds())[0], before[0]);
         await restore.press('Enter'); await fold.waitFor();
         await p.waitForFunction(([w,h]) => {
           const el = window.questlog ? document.documentElement : document.getElementById('panel');
@@ -452,6 +453,8 @@ test('rich blocks, hover drag, opacity settings and a persistent two-axis window
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
         await page.getByRole('slider', { name: 'Idle opacity' }).fill('15');
         await page.getByRole('slider', { name: 'Hover opacity' }).fill('88');
+        await page.getByLabel('Background color').fill('#123456');
+        await page.getByLabel('Text color').fill('#abc123');
         await page.getByRole('checkbox', { name: 'Fade text too' }).check();
         await page.getByRole('button', { name: 'Done', exact: true }).click();
         await app.close(); app = undefined;
@@ -461,10 +464,15 @@ test('rich blocks, hover drag, opacity settings and a persistent two-axis window
         assert.deepEqual(saved.items[1].spans, [{ from: 0, to: 9, href: 'https://example.com/trail', bold: true, italic: true, underline: true }]);
         assert.deepEqual(saved.noteSpans, [{ from: 0, to: 12, italic: true }, { from: 12, to: 13, italic: true, underline: true }, { from: 13, to: 14, italic: true }]);
         assert.deepEqual([saved.opacity, saved.hoverOpacity, saved.fadeText], [15, 88, true]);
+        assert.deepEqual([saved.backgroundColor, saved.textColor], ['#123456', '#abc123']);
         app = await launch(); page = await app.firstWindow(); page.setDefaultTimeout(7_000);
         field = page.getByRole('textbox', { name: 'Item: Trail map', exact: true });
         assert.equal(await field.locator('a strong em u').textContent(), 'Trail map');
         assert.equal(await page.getByRole('textbox', { name: 'Notepad' }).locator('u').textContent(), '!');
+        const colors = await page.locator('#overlay-title, #header-clock, #timer-time, .words, .words a, #notes').evaluateAll(nodes =>
+          [...new Set(nodes.map(el => getComputedStyle(el).color))]);
+        assert.deepEqual(colors, ['rgb(171, 193, 35)']);
+        await page.waitForFunction(() => getComputedStyle(document.getElementById('panel')).backgroundColor === 'rgb(18, 52, 86)');
         assert.deepEqual(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds()), bounds);
 
         const [preview] = await Promise.all([app.waitForEvent('window'), app.evaluate(async ({ BrowserWindow }, file) => {

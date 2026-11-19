@@ -80,6 +80,8 @@ html:not(.desktop) body { min-height: 100dvh; padding: 12px; display: grid; plac
 .scenery > svg { width: 100%; height: 100%; }
 #panel {
   container-type: inline-size;
+  --cp-linen: var(--cp-ivory);
+  color: var(--cp-ivory);
   --level: var(--idle);
   --item-size: max(.75rem, calc(var(--text-size) - .0625rem));
   --row-height: max(24px, calc(var(--item-size) * var(--leading) + 4px));
@@ -181,7 +183,7 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
   font: var(--item-size)/var(--leading) var(--journal-face); text-shadow: var(--ink-shadow);
 }
 #panel.folded { padding-bottom: 2px; }
-html:not(.desktop) #panel.folded { width: min(156px, 100vw) !important; height: 40px !important; }
+html:not(.desktop) #panel.folded { height: 40px !important; }
 #panel.folded .topline { display: flex; flex-wrap: nowrap; flex: 1; }
 #panel.folded .tools { opacity: 1; }
 #panel.folded :is(#header-clock, #writing, #countdown, #resize, #notice),
@@ -206,6 +208,10 @@ html:not(.desktop) #panel.folded { width: min(156px, 100vw) !important; height: 
 #timer-start:hover { background: color-mix(in srgb, var(--cp-smoke) 36%, transparent); }
 #notice { padding: 8px; background: var(--cp-smoke); font-size: 12px; }
 .sheet {
+  /* Keep the controls legible even when the two overlay colors match. */
+  --cp-smoke: var(--cp-bg-elevated);
+  --cp-ivory: var(--cp-text);
+  --cp-linen: var(--cp-text-muted);
   min-height: 0; overflow: auto; padding: 6px 8px; margin-top: 3px; border-radius: 5px;
   background: color-mix(in srgb, var(--cp-smoke) 95%, var(--cp-linen)); color: var(--cp-ivory); font-size: 12px;
 }
@@ -217,6 +223,7 @@ html:not(.desktop) #panel.folded { width: min(156px, 100vw) !important; height: 
 .settings-head { justify-content: space-between; }
 .settings-head h2 { margin: 0; font-size: 14px; }
 .sheet label input:not([type="checkbox"]), .sheet label select { flex: 1; min-width: 0; margin-left: auto; }
+.sheet label input[type="color"] { flex: none; width: 40px; height: 24px; cursor: pointer; }
 .sheet input, .sheet select { accent-color: var(--cp-linen); }
 .sheet input:not([type="range"],[type="checkbox"]), .sheet select { padding: 3px 4px; background: var(--cp-smoke); color: var(--cp-ivory); border: 1px solid var(--cp-border-strong); border-radius: 4px; }
 .sheet output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }

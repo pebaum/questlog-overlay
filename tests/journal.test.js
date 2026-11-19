@@ -98,6 +98,15 @@ test('a damaged or newer journal is never replaced with an empty list', t => {
   }
 });
 
+test('older v3 journals gain color defaults and only opaque picker colors are accepted', () => {
+  const { backgroundColor, textColor, ...old } = newJournal();
+  old.notes = 'Stay as written'; old.opacity = 0;
+  assert.deepEqual(loadJournal(old), { ...old, backgroundColor, textColor });
+  for (const bad of [null, 'red', '#12345678', ['#ffffff']]) {
+    assert.throws(() => loadJournal({ ...old, textColor: bad }), /color/);
+  }
+});
+
 test('restore on a left-hand monitor; keep a growing panel inside its work area', () => {
   const left = { x: -1280, y: -50, width: 1280, height: 900 };
   const right = { x: 0, y: 0, width: 1920, height: 1080 };
