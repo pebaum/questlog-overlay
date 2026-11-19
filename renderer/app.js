@@ -6,6 +6,7 @@ import { setupGeometry } from './geometry.js';
 import { enableBlockDrag } from './reorder.js';
 import { initTimer } from './timer.js';
 import { localStamp } from '../shared/local-time.js';
+import { bindUpdateAction } from './update-action.js';
 
 const $ = id => document.getElementById(id);
 const root = document.documentElement, native = window.questlog, list = $('items'), panel = $('panel');
@@ -127,7 +128,9 @@ function updateRow(row) {
   row.classList.toggle('empty', draft);
   if (draft) check.checked = false;
   row.querySelector('.tick').hidden = !todo;
-  row.querySelector('.bullet-mark').hidden = row.dataset.kind !== 'bullet';
+  const marker = row.querySelector('.list-marker');
+  marker.hidden = row.dataset.kind !== 'bullet' && (row.dataset.kind !== 'numbered' || draft);
+  if (row.dataset.kind === 'bullet') marker.textContent = '\u2022';
   check.disabled = draft || locked();
   check.setAttribute('aria-label', draft ? 'Empty item' : `Complete: ${text.trim() ? text : 'Untitled to-do'}`);
   order.setAttribute('aria-label', `Reorder: ${text.trim() || 'Untitled block'}`);
@@ -138,9 +141,12 @@ function updateRow(row) {
 }
 function syncOrder() {
   const rows = itemRows();
+  let number = 0;
   rows.forEach((row, i) => {
+    number = row.dataset.kind === 'numbered' ? number + 1 : 0;
+    if (number) row.querySelector('.list-marker').textContent = `${number}.`;
     row.setAttribute('aria-label', `Item ${i + 1} of ${rows.length}`);
-    row.setAttribute('aria-description', `${row.dataset.kind} block`);
+    row.setAttribute('aria-description', number ? `Numbered list item ${number}` : `${row.dataset.kind} block`);
     row.setAttribute('aria-posinset', i + 1); row.setAttribute('aria-setsize', rows.length);
     const order = row.querySelector('.order-value');
     order.hidden = locked() || rows.length < 2;
@@ -214,7 +220,8 @@ function createRow(item = {}, after = null) {
       const brackets = before + typed === '[]';
       if (!brackets && typed !== ' ') return false;
       const kind = brackets || ['[]', '[ ]', '/todo'].includes(before) ? 'todo'
-        : ['-', '*', '/bullet'].includes(before) ? 'bullet' : ['/text', '/paragraph'].includes(before) ? 'paragraph' : null;
+        : ['-', '*', '/bullet'].includes(before) ? 'bullet' : ['1.', '/numbered'].includes(before) ? 'numbered'
+        : ['/text', '/paragraph'].includes(before) ? 'paragraph' : null;
       if (!kind) return false;
       if (pos) v.dispatch(v.state.tr.delete(0, pos));
       check.checked = false; changeKind(row, kind);
@@ -327,6 +334,7 @@ async function init() {
   };
   document.addEventListener('click', clearEmptyRows); document.addEventListener('keyup', clearEmptyRows);
   syncTimerMode = initTimer(native, locked, notice);
+  bindUpdateAction($('update-action'), native, notice);
   appearance(); setMode(mode); new ResizeObserver(fit).observe(panel);
 }
 init().catch(e => {

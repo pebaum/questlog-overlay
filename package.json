@@ -1,7 +1,7 @@
 {
   "name": "questlog-overlay",
   "productName": "Questlog",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "description": "A quiet, translucent desktop checklist and notepad.",
   "repository": "github:pebaum/questlog-overlay",
@@ -11,7 +11,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "test": "node --test tests/journal.test.js tests/countdown.test.js tests/updates.test.js",
+    "test": "node --test tests/journal.test.js tests/countdown.test.js tests/updates.test.js tests/update-action.test.js",
     "test:desktop": "npm run build && node --test tests/desktop.test.js",
     "test:uia": "npm run build && powershell.exe -NoProfile -NonInteractive -File tests\\windows-uia.ps1",
     "dist:win": "npm run build && electron-builder --win nsis --x64 --arm64 --publish never",

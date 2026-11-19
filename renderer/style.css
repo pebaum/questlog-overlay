@@ -128,7 +128,9 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .line.drop-before::before, .line.drop-after::after { content: ''; position: absolute; inset-inline: 16px 0; height: 2px; background: var(--cp-linen); pointer-events: none; }
 .line.drop-before::before { top: 0; }
 .line.drop-after::after { bottom: 0; }
-.bullet-mark { grid-column: 2; display: grid; place-items: center; height: var(--row-height); text-shadow: var(--ink-shadow); }
+.list-marker { grid-column: 2; display: grid; place-items: center; height: var(--row-height); text-shadow: var(--ink-shadow); user-select: none; }
+.line[data-kind="numbered"] { grid-template-columns: 18px minmax(20px, max-content) minmax(0, 1fr); }
+.line[data-kind="numbered"] .list-marker { color: var(--cp-linen); font: var(--item-size)/var(--leading) var(--journal-face); font-variant-numeric: tabular-nums; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .tick { display: grid; grid-column: 2; place-items: center; width: 20px; height: var(--row-height); position: relative; cursor: pointer; }
 .tick input { margin: 0; position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: inherit; }
@@ -155,6 +157,11 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .topline { display: flex; flex-wrap: wrap; align-items: center; flex: none; gap: 0 4px; min-height: 28px; margin: -2px -8px 0; padding: 2px 8px 0 12px; cursor: grab; user-select: none; touch-action: none; }
 #header-clock { white-space: nowrap; color: var(--cp-linen); font: .75rem/1.3 var(--journal-face); font-variant-numeric: tabular-nums; text-shadow: var(--ink-shadow); }
 .topline h1 { margin: 0; font: var(--title-size)/1.2 var(--journal-face); text-shadow: var(--ink-shadow); }
+.title-group { display: flex; align-items: center; gap: 2px; grid-area: title; }
+#update-action { display: grid; place-items: center; width: 24px; height: 24px; color: var(--cp-linen); border-radius: 4px; }
+#update-action:hover, #update-action:focus-visible { color: var(--cp-ivory); }
+#update-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+#panel.folded #update-action, .locked #update-action { display: none; }
 .topline:active { cursor: grabbing; }
 .desktop:not(.locked) .topline { -webkit-app-region: drag; }
 .locked .topline { cursor: default; }
@@ -165,7 +172,7 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .tools svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 1px 1px var(--cp-smoke)); }
 @container (max-width: 320px) {
   .topline { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "title tools" "readout readout"; }
-  .topline h1 { grid-area: title; justify-self: start; }
+  .title-group { justify-self: start; }
   .topline .tools { grid-area: tools; }
   #header-clock { grid-area: readout; }
 }

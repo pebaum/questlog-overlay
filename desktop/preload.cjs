@@ -9,6 +9,13 @@ contextBridge.exposeInMainWorld('questlog', {
   openLink: url => ipcRenderer.invoke('link:open', url),
   startTimer: entry => ipcRenderer.invoke('timer:start', entry),
   stopTimer: () => ipcRenderer.invoke('timer:stop'),
+  updateAction: () => ipcRenderer.invoke('update:action'),
+  watchUpdate: callback => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('update:state', listener);
+    ipcRenderer.send('update:watch');
+    return () => ipcRenderer.removeListener('update:state', listener);
+  },
   watchTimer: callback => {
     ipcRenderer.on('timer:state', (_event, update) => callback(update));
     ipcRenderer.send('timer:watch');

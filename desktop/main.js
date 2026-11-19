@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerMonitor, screen, session, shell, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerMonitor, screen, session, shell, Tray } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateJournal } from '../shared/journal.js';
@@ -7,7 +7,7 @@ import { openJournal, readJson, writeJson } from './storage.js';
 import { findDisplay, fitPanel } from './placement.js';
 import { countdown } from '../shared/countdown.js';
 import { assistantHelp } from './assistant-help.js';
-import { checkForUpdate, releasesPage } from './updates.js';
+import { windowsUpdater } from './update-manager.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const mac = process.platform === 'darwin';
@@ -18,7 +18,7 @@ if (process.platform === 'win32') app.setAppUserModelId('app.questlog.desktop');
 let win, tray, journal, journalFile, layoutFile, editTimer, positionTimer;
 let locked = false, folded = false, shortcut = false, dirty = false, quitting = false;
 let requestedHeight = 100, manualSize, hoverTimer, hot = false;
-let timer, timerIssue;
+let timer, timerIssue, updater, updateFrozen = false;
 function send(channel, payload) {
   if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, payload);
 }
@@ -53,46 +53,47 @@ function saveLater(next) {
   }
 }
 
-function savePosition() {
+function savePosition(strict = false) {
   clearTimeout(positionTimer);
   if (!win || win.isDestroyed()) return;
   const { x, y } = win.getBounds();
   try { writeJson(layoutFile, { x, y, ...(manualSize && { size: manualSize }) }); }
-  catch (error) { console.warn('Could not remember panel position:', error.message); }
+  catch (error) {
+    if (strict) throw error;
+    console.warn('Could not remember panel position:', error.message);
+  }
 }
 
 function mode() {
   return { locked, folded, shortcut: shortcut ? (mac ? 'Cmd + Shift + Space' : 'Ctrl + Shift + Space') : null };
 }
 
-let checking = false;
-async function showUpdateCheck() {
-  if (checking) return;
-  checking = true;
-  refreshTray();
-  const installed = app.getVersion();
-  const prompt = options => dialog.showMessageBox({ title: 'Questlog updates', ...options });
-  try {
-    const update = await checkForUpdate(installed, (url, options) => net.fetch(url, options));
-    if (!update) {
-      await prompt({ message: 'Questlog is up to date.', detail: `Installed version: ${installed}` });
-    } else {
-      const { response } = await prompt({ message: `Questlog ${update.version} is available.`,
-        detail: `You have ${installed}. Download the Windows installer, quit Questlog from the tray, then run it. Your journal and settings stay in place.`,
-        buttons: ['Download installer', 'Not now'], defaultId: 0, cancelId: 1 });
-      if (response === 0) await shell.openExternal(update.url);
-    }
-  } catch (error) {
-    const { response } = await prompt({ type: 'warning', message: 'Could not complete the update check.', detail: error.message,
-      buttons: ['Close', 'Open GitHub releases'], defaultId: 0, cancelId: 0 });
-    if (response === 1) {
-      try { await shell.openExternal(releasesPage); }
-      catch { dialog.showErrorBox('Could not open your browser', `Visit ${releasesPage} to check manually.`); }
-    }
-  } finally {
-    checking = false;
-    if (!quitting && tray && !tray.isDestroyed()) refreshTray();
-  }
+function updatePrompt(options) {
+  const box = { title: 'Questlog updates', ...options };
+  return win?.isVisible() && !locked ? dialog.showMessageBox(win, box) : dialog.showMessageBox(box);
+}
+
+async function trayUpdate(check) {
+  if (updater.busy || quitting) return;
+  const result = await (check ? updater.check(true) : updater.action());
+  if (quitting) return;
+  if (result.status === 'error') await updatePrompt({ type: 'warning', message: result.message });
+  else if (check) await updatePrompt({ message: {
+    idle: 'Questlog is up to date.',
+    available: `Questlog ${result.version} is available. Choose Download update in the tray to get it.`,
+    ready: `Questlog ${result.version} is ready. Choose Restart & update in the tray when convenient.`
+  }[result.status] });
+}
+
+function updateMenu() {
+  if (!updater) return [];
+  const { status, version, progress } = updater.state;
+  const action = { available: `Download update (${version})`, downloading: `Downloading update… ${progress}%`,
+    ready: `Restart && update (${version})…`, installing: 'Preparing to restart…', error: 'Retry update…' }[status];
+  return [
+    { label: 'Check for updates…', enabled: !updater.busy, click: () => trayUpdate(true) },
+    ...(action ? [{ label: action, enabled: !updater.busy, click: () => trayUpdate(false) }] : [])
+  ];
 }
 
 function refreshTray() {
@@ -105,7 +106,7 @@ function refreshTray() {
     { label: 'Move to primary display', click: () => { resizePanel(true); showEditor(); } },
     { label: 'Hide panel', click: () => win.hide() },
     { type: 'separator' },
-    ...(process.platform === 'win32' ? [{ label: checking ? 'Checking for updates…' : 'Check for updates…', enabled: !checking, click: showUpdateCheck }] : []),
+    ...updateMenu(),
     { label: 'Quit Questlog', click: () => app.quit() }
   ]));
 }
@@ -215,6 +216,38 @@ async function start() {
   } catch (e) {
     timerIssue = `Cannot open the saved timer: ${e.message}`;
   }
+  if (app.isPackaged && process.platform === 'win32') {
+    updater = windowsUpdater({
+      data, installed: app.getVersion(),
+      changed: state => {
+        // Quiesce input while hashing the staged file; outstanding save IPCs can drain.
+        if (state.status === 'installing') { updateFrozen = true; win.setEnabled(false); }
+        else if (updateFrozen && !quitting) { updateFrozen = false; win.setEnabled(true); }
+        send('update:state', state);
+        if (!quitting) refreshTray();
+      },
+      activity: () => { if (!quitting && tray && !tray.isDestroyed()) refreshTray(); },
+      confirmRestart: async version => (await updatePrompt({
+        message: `Restart Questlog to install ${version}?`, detail: 'Your journal, timer and window settings will be saved first.',
+        buttons: ['Restart & update', 'Later'], defaultId: 1, cancelId: 1, noLink: true
+      })).response === 0,
+      prepareRestart: () => {
+        flushJournal();
+        if (timerIssue) throw new Error(timerIssue);
+        writeJson(timerFile, timer.state);
+        savePosition(true);
+      },
+      quit: () => app.quit()
+    });
+  }
+  ipcMain.on('update:watch', e => {
+    if (fromPanel(e)) send('update:state', updater?.state ?? { status: 'idle' });
+  });
+  ipcMain.handle('update:action', (e, ...args) => {
+    if (!fromPanel(e) || locked || args.length) throw new Error('Use the unlocked journal to manage updates.');
+    if (!updater) throw new Error('Updates are available only in the installed Windows app.');
+    return updater.action();
+  });
   ipcMain.on('timer:watch', e => {
     if (fromPanel(e)) send('timer:state', timer ? { state: timer.state } : { error: timerIssue });
   });
@@ -283,6 +316,7 @@ async function start() {
   win.on('closed', () => { win = undefined; });
   await win.loadFile(path.join(root, 'app', 'index.html'));
   win.showInactive();
+  updater?.start();
   // Fully transparent pixels and click-through windows do not reliably receive mouseenter.
   hoverTimer = setInterval(() => {
     if (!win?.isVisible()) return;
@@ -302,6 +336,8 @@ if (!app.requestSingleInstanceLock()) {
     app.quit();
   });
   app.on('before-quit', event => {
+    // Let only the verified installer handoff quit during the final verification/save/spawn.
+    if (updater?.state.status === 'installing' && !updater.committed) { event.preventDefault(); return; }
     try { flushJournal(); }
     catch (error) {
       const choice = dialog.showMessageBoxSync({
@@ -314,6 +350,7 @@ if (!app.requestSingleInstanceLock()) {
     savePosition();
   });
   app.on('will-quit', () => {
+    updater?.stop();
     if (timer) { timer.dispose(); powerMonitor.removeListener('resume', timer.check); }
     clearInterval(hoverTimer); globalShortcut.unregisterAll(); tray?.destroy();
   });

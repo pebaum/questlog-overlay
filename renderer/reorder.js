@@ -17,8 +17,8 @@ function makePreview(row, width) {
     tick.append(row.querySelector('.tick svg').cloneNode(true));
     preview.classList.toggle('checked', row.querySelector('.tick input').checked);
     preview.append(tick);
-  } else if (row.dataset.kind === 'bullet') {
-    preview.append(row.querySelector('.bullet-mark').cloneNode(true));
+  } else if (!row.querySelector('.list-marker').hidden) {
+    preview.append(row.querySelector('.list-marker').cloneNode(true));
   }
   const words = row.querySelector('.words').cloneNode(true);
   words.removeAttribute('id'); words.removeAttribute('contenteditable'); words.removeAttribute('role');

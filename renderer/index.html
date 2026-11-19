@@ -47,7 +47,10 @@
   <div class="scenery" aria-hidden="true">__ATLAS__</div>
   <main id="panel" aria-labelledby="overlay-title">
     <header class="topline" id="move" title="Drag to move">
-      <h1 id="overlay-title">QUESTS</h1>
+      <div class="title-group">
+        <h1 id="overlay-title">QUESTS</h1>
+        <button id="update-action" type="button" aria-label="Download update" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path/></svg></button>
+      </div>
       <time id="header-clock" aria-live="off" title="Current local time and date"></time>
       <div class="tools" role="group" aria-label="Overlay controls">
         <button id="append" aria-label="Insert item" title="Insert item (Enter)"><svg><use href="#i-plus"/></svg></button>
@@ -89,7 +92,7 @@
         <input type="checkbox">
         <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2"/><path d="m5.5 9 2.4 2.5 4.7-5"/></svg>
       </label>
-      <span class="bullet-mark" aria-hidden="true" hidden>&bull;</span>
+      <span class="list-marker" aria-hidden="true" hidden></span>
       <div class="words rich"></div>
     </li>
   </template>

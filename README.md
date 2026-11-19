@@ -6,13 +6,13 @@ A floating block editor and notepad. Drag **QUESTS** or any empty space across t
 
 [**Download Questlog for Windows from the latest GitHub release.**](https://github.com/pebaum/questlog-overlay/releases/latest) Under **Assets**, run `Questlog-Setup-<version>.exe`. The offline installer includes the runtime and picks x64 or ARM64 automatically. It installs for the current user without a developer environment or administrator access. Open **Questlog** from Start. To remove it, use **Settings > Apps > Installed apps**. Uninstalling does not delete the journal.
 
-The installer is unsigned. Windows or a managed PC may warn about or block an unknown publisher. Only download it from the official repository linked above.
+The installer is not Windows Authenticode-signed. Windows or a managed PC may warn about or block an unknown publisher. Download the first installer from the official repository linked above. After installation, Questlog verifies future in-app downloads with its own pinned release-signing key.
 
 ## Check for updates
 
-Right-click **Questlog** in the Windows system tray (look under **Show hidden icons** if needed), then choose **Check for updates…**. When a newer stable release is available, choose **Download installer**. Once it downloads, quit Questlog from the tray and run the installer. No uninstall is needed; your checklist, notes, timer and settings stay in place.
+Starting with 0.15.0, the installed Windows app periodically checks GitHub for a newer stable release. When one is available, a small **download icon** appears beside **QUESTS**. Click it to download while you keep writing. When the icon changes to **Restart & update**, click it and confirm when you're ready. Questlog saves your journal, applies the verified update and reopens; a running timer keeps its original deadline. You can also use the Questlog tray menu. There's no update icon when you're current.
 
-The check contacts GitHub only when you choose it. It doesn't send journal content, install in the background, or require a GitHub account. If you have an older build without the menu command, install the [latest release](https://github.com/pebaum/questlog-overlay/releases/latest) once.
+Checks don't send your notes or checklist, and they don't require a GitHub account. The browser preview never checks for or installs desktop updates. If you're on 0.14.0 or earlier, install the [latest Windows release](https://github.com/pebaum/questlog-overlay/releases/latest) once to get in-app updates.
 
 ## Use the overlay
 
@@ -20,6 +20,7 @@ The check contacts GitHub only when you choose it. It doesn't send journal conte
 - **Count down to a clock time:** type `11a`, `1234p`, or `12:34 PM` in the timer field, then press **Enter** or click **Play**. QUESTS uses the next local occurrence, tomorrow if today's time has passed. `12a` is midnight and `12p` is noon. Repeating a clock-time timer calculates a fresh deadline rather than reusing the old interval.
 - **Blocks:** type `[]` at the start of a block to make an unchecked to-do immediately; no space is required. `-` followed by Space makes a bullet. You can also type `/todo`, `/bullet`, or `/text` followed by Space at the beginning of a new or existing block. **Enter** continues a filled bullet or to-do. On an empty bullet or to-do, **Enter** ends the list in place and leaves an unformatted paragraph. **Shift+Enter** makes a line break inside the current block.
 - **Reordering:** drag the dotted handle. A translucent copy follows the pointer, and the insertion line shows where it will drop. Clicking the handle does not open a menu. **Esc** cancels a drag; **Alt+Up / Alt+Down** reorders the focused item without dragging.
+- **Numbered lists:** type `1.` then Space (or `/numbered` then Space) at the start of a block. Enter continues the list; Enter on an empty numbered item returns to plain text. Consecutive numbered items renumber when moved, and a new list after another kind of block starts at 1.
 - **Text:** use **Ctrl+B** for bold, **Ctrl+I** for italics, and **Ctrl+U** for underline (**Cmd** on a Mac). Select words to toggle their formatting, or use the shortcut before typing. Selecting text does not open a toolbar. Type or paste web addresses in any block or the notepad to make clickable links; destinations follow edits to the address. Paste a URL over selected words to link that label instead. Click a link to open it in your browser.
 - **Timer:** enter minutes or `mm:ss` and click **▶** or press **Enter**. The ASCII bar brightens and fills from left to right. The button becomes **■** while running: click it to stop silently and return to the original duration with an empty bar. To change a running timer instead, edit the time and press **Enter**; **Esc** discards your edit. On natural completion the app pings, the full bar dims, and **▶** returns. Locking the overlay or hiding it to the tray does not stop the timer. System sound and notification settings apply. If the app is quit, it checks the saved deadline next time it opens. The preview uses an in-page chime when browser audio is available.
 - The time, ASCII bar, and play/stop icon share one opacity: **35%** while idle, stopped, or finished; **100%** while running, relative to the overlay. Windows forced-colors mode keeps them at full contrast.
@@ -74,8 +75,8 @@ npm run dist:win
 ### Publish a Windows update
 
 1. On a clean checkout, bump the stable `major.minor.patch` version in `package.json` and `package-lock.json`. Run `npm ci`, `npm test`, `npm run test:desktop`, and `npm run dist:win`. Test the packaged app with the UI Automation command above.
-2. Push the release commit and a matching `v<version>` tag. Create a draft GitHub Release for that tag and attach `release/Questlog-Setup-<version>.exe` without renaming it.
-3. Publish the release as **latest**, not as a prerelease. Verify that its installer downloads without signing in. The tray command reads GitHub's latest stable release; pushing code or a tag alone does not offer an update.
+2. After the **final** build, run `powershell.exe -NoProfile -File .\scripts\sign-update.ps1 -Version <version>` on the release-signing Windows account. The dedicated non-exportable key signs the version, installer name and SHA-256. Only its public key is in source. Losing the private key requires a new manual bootstrap; don't silently replace the pin.
+3. Push the release commit and matching `v<version>` tag. Attach both `Questlog-Setup-<version>.exe` **and** `Questlog-Setup-<version>.exe.sig` to a draft GitHub release. Publish as **latest**, not as a prerelease, after verifying the uploads. Both assets must be downloadable without signing in. A tag alone does not offer an update.
 
 ## Later macOS release
 

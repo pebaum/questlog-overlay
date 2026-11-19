@@ -1,4 +1,4 @@
-export const blockTypes = Object.freeze(['todo', 'bullet', 'paragraph']);
+export const blockTypes = Object.freeze(['todo', 'bullet', 'numbered', 'paragraph']);
 
 export function webLink(value) {
   if (typeof value !== 'string' || value.length > 4096 || !/^https?:\/\//i.test(value) || /[\u0000-\u0020\\]/.test(value)) return null;

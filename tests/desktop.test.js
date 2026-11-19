@@ -197,6 +197,35 @@ test('filled list items continue; Enter exits an empty list item into plain text
   }
 });
 
+test('numbered blocks continue, restart after a paragraph, and renumber after a move and reload', async () => {
+  const profile = await mkdtemp(path.join(tmpdir(), 'questlog-numbered-'));
+  let app;
+  try {
+    app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
+    const page = await app.firstWindow();
+    const rows = page.locator('#items > li'), last = () => rows.last().getByRole('textbox');
+    const numbers = () => rows.locator('.list-marker:visible').allTextContents();
+    await last().pressSequentially('1. First'); await last().press('Enter');
+    await last().pressSequentially('Second'); await last().press('Enter'); await last().press('Enter');
+    await last().pressSequentially('Break'); await last().press('Enter');
+    await last().pressSequentially('/numbered Third');
+    assert.deepEqual(await numbers(), ['1.', '2.', '1.']);
+    await last().press('Alt+ArrowUp');
+    assert.deepEqual(await numbers(), ['1.', '2.', '3.']);
+    await page.waitForFunction(() => document.getElementById('items').children[2].getAttribute('aria-description') === 'Numbered list item 3');
+    await app.close(); app = undefined;
+    const saved = JSON.parse(await readFile(path.join(profile, 'journal.json'), 'utf8'));
+    assert.deepEqual(saved.items.map(i => [i.kind, i.text]), [['numbered', 'First'], ['numbered', 'Second'], ['numbered', 'Third'], ['paragraph', 'Break']]);
+    app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
+    const reopened = await app.firstWindow();
+    await reopened.getByRole('textbox', { name: 'Item: Third' }).waitFor();
+    assert.deepEqual(await reopened.locator('.list-marker:visible').allTextContents(), ['1.', '2.', '3.']);
+  } finally {
+    try { await app?.close(); }
+    finally { await rm(profile, { force: true, recursive: true, maxRetries: 4, retryDelay: 150 }); }
+  }
+});
+
 test('typed and pasted addresses link without a toolbar or dialog; a hidden timer finishes once', { timeout: 45_000 }, async () => {
   const profile = await mkdtemp(path.join(tmpdir(), 'questlog-clock-'));
   let app;
