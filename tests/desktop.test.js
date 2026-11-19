@@ -8,6 +8,59 @@ import { _electron as electron } from 'playwright-core';
 
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 
+test('Windows whole-display capture omits or blanks the visible overlay', { skip: process.platform !== 'win32', timeout: 40_000 }, async () => {
+  const profile = await mkdtemp(path.join(tmpdir(), 'questlog-capture-'));
+  let app;
+  try {
+    app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
+    const page = await app.firstWindow();
+    await page.getByRole('heading', { name: 'QUESTS' }).waitFor();
+    await page.evaluate(() => {
+      const marker = document.body.appendChild(document.createElement('div'));
+      Object.assign(marker.style, { position: 'fixed', inset: '0', background: 'magenta', zIndex: '2147483647' });
+      if (document.elementFromPoint(45, 25) !== marker) throw new Error('Test marker does not cover the sample point');
+    });
+    const result = await app.evaluate(async ({ BrowserWindow, desktopCapturer, screen }) => {
+      const overlay = BrowserWindow.getAllWindows()[0], d = screen.getPrimaryDisplay();
+      const x = Math.round(d.workArea.x + d.workArea.width / 2), y = Math.round(d.workArea.y + d.workArea.height / 2);
+      overlay.setPosition(x - 45, y - 25);
+      const back = new BrowserWindow({ x: x - 100, y: y - 65, width: 470, height: 190,
+        frame: false, show: false, focusable: false, skipTaskbar: true, backgroundColor: '#00ff00' });
+      try {
+        await back.loadURL('data:text/html,<body style="background:lime">');
+        back.setAlwaysOnTop(true); back.showInactive(); overlay.moveTop();
+        const near = (pixel, expected) => pixel.every((v, i) => Math.abs(v - expected[i]) < 22);
+        const rgb = (image, px, py) => {
+          const [b, g, r] = image.crop({ x: px, y: py, width: 1, height: 1 }).toBitmap();
+          return [r, g, b];
+        };
+        if (!overlay.isVisible() || !overlay.isContentProtected()) return 'protected overlay not visible';
+        for (let i = 0; i < 10; i++) {
+          const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1024, height: 1024 } });
+          const image = sources.find(s => s.display_id === String(d.id))?.thumbnail;
+          if (!image || image.isEmpty()) throw new Error('No primary screen capture available');
+          const size = image.getSize();
+          const sample = (sx, sy) => rgb(image, Math.floor((sx - d.bounds.x) / d.bounds.width * size.width),
+            Math.floor((sy - d.bounds.y) / d.bounds.height * size.height));
+          // Only inspect two synthetic pixels. Never serialize or save the desktop image.
+          if (near(sample(x - 75, y), [0, 255, 0])) {
+            const center = sample(x, y);
+            if (near(center, [0, 255, 0])) return 'excluded';
+            if (near(center, [0, 0, 0])) return 'blanked';
+            if (near(center, [255, 0, 255])) return 'overlay captured';
+          }
+          await new Promise(resolve => setTimeout(resolve, 120));
+        }
+        return 'could not calibrate desktop capture';
+      } finally { back.destroy(); }
+    });
+    assert.ok(['excluded', 'blanked'].includes(result), result);
+  } finally {
+    try { await app?.close(); }
+    finally { await rm(profile, { force: true, recursive: true, maxRetries: 4, retryDelay: 150 }); }
+  }
+});
+
 async function exerciseInitialRows(page, t) {
     const blank = page.getByRole('textbox', { name: 'New item', exact: true });
     assert.ok(await blank.evaluate(e => !e.hasAttribute('data-placeholder') && ['none', 'normal'].includes(getComputedStyle(e, '::before').content)));

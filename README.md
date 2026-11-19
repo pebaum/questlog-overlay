@@ -32,6 +32,12 @@ The check contacts GitHub only when you choose it. It doesn't send journal conte
 
 The overlay works over ordinary windows and borderless-windowed games. Exclusive fullscreen, secure desktops (such as UAC prompts), lock screens, and other apps that enforce their own topmost layer are outside its control.
 
+### Screenshots and screen sharing
+
+The installed Windows overlay turns on capture protection before displaying the journal. You still see it locally, including while editing or locked. In a whole-screen share or screenshot that honors [Windows capture exclusion](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity), viewers see the window underneath; some capture methods or older Windows versions show a blank or black area instead. There is no setting to turn on.
+
+The **browser preview is not protected**. Windows cannot guarantee exclusion from every recorder or an external camera. Before sharing sensitive notes in Teams, check the **recipient's view** with a harmless test item. If you haven't confirmed the result, choose **Hide panel** from the tray or quit Questlog before sharing.
+
 ## Computer-use accessibility requirement
 
 **Give an assistant the guide:** right-click the Questlog tray icon and choose **AI help > Copy AI instructions**. Paste that text into the assistant you choose, then tell it what you want done. This copies a brief UI guide and the actual local paths, not your notes or checklist. The other two commands in **AI help** reveal the journal or guide in File Explorer.

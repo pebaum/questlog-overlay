@@ -11,6 +11,19 @@ if (!$Executable) {
 }
 $descendants = [System.Windows.Automation.TreeScope]::Descendants
 $ae = [System.Windows.Automation.AutomationElement]
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class QuestlogCapturePolicy {
+    [DllImport("user32.dll", SetLastError=true)]
+    public static extern bool GetWindowDisplayAffinity(IntPtr window, out uint affinity);
+}
+'@
+function Assert-CaptureProtection {
+    [uint32]$affinity = 0
+    if (![QuestlogCapturePolicy]::GetWindowDisplayAffinity([IntPtr]::new($window.Current.NativeWindowHandle), [ref]$affinity) -or
+        $affinity -notin @(0x11, 0x01)) { throw "Windows did not report capture protection for the overlay (affinity $affinity)" }
+}
 
 function Wait-For($description, [scriptblock]$probe) {
     $timer = [Diagnostics.Stopwatch]::StartNew()
@@ -110,6 +123,7 @@ try {
     Start-Fixture
     [void](Wait-For 'the disposable journal' { Test-Path -LiteralPath (Join-Path $profileDir 'journal.json') })
     $initial = Editor 'New item'
+    Assert-CaptureProtection
     Assert-TitleDrag
     Invoke-Button 'Settings'
     [void](Control 'Idle opacity' ([System.Windows.Automation.ControlType]::Slider))
@@ -162,6 +176,7 @@ try {
     [void](Wait-For 'locked checklist remains readable but not editable' {
         (Text-Value (Control 'Item: Pack the lantern')).Current.IsReadOnly -and !(Control 'Complete: Pack the lantern').Current.IsEnabled
     })
+    Assert-CaptureProtection
     Write-Output 'Windows UI Automation: add, edit, check, reorder, notes, restart and read-only lock passed.'
 } catch {
     $file = Join-Path $profileDir 'journal.json'

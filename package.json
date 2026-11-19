@@ -1,7 +1,7 @@
 {
   "name": "questlog-overlay",
   "productName": "Questlog",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "description": "A quiet, translucent desktop checklist and notepad.",
   "repository": "github:pebaum/questlog-overlay",

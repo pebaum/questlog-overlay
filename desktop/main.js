@@ -180,6 +180,14 @@ async function start() {
       backgroundThrottling: false, devTools: !app.isPackaged
     }
   });
+  if (process.platform === 'win32') {
+    // Apply this to the hidden native window, before any journal content is loaded.
+    win.setContentProtection(true);
+    if (!win.isContentProtected()) {
+      win.destroy();
+      throw new Error('Windows capture protection could not be enabled. The overlay has not been shown.');
+    }
+  }
   win.setAlwaysOnTop(true, 'screen-saver');
   if (mac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
