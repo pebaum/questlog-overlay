@@ -7,6 +7,7 @@ export const defaultColors = Object.freeze({ backgroundColor: '#131210', textCol
 
 export const defaultAppearance = Object.freeze({
   ...defaultColors,
+  autoHide: 'off',
   typeface: 'dotgothic16', rowGap: 0, lineHeight: 110, textSize: 16, titleSize: 20,
   opacity: 6, dither: 100, pixelSize: 1
 });

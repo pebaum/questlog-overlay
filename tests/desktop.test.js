@@ -61,7 +61,7 @@ test('Windows whole-display capture omits or blanks the visible overlay', { skip
   }
 });
 
-test('minimize to the title and restore content, running timer and window size', { timeout: 45_000 }, async () => {
+test('minimize to the full header and timer, restore size, and recover from both auto-hide modes', { timeout: 65_000 }, async () => {
   const profile = await mkdtemp(path.join(tmpdir(), 'questlog-title-'));
   let app;
   try {
@@ -76,7 +76,7 @@ test('minimize to the title and restore content, running timer and window size',
       await p.locator('#toggle-notes').click();
       await p.locator('#notes').fill('Return to camp');
       await p.locator('#timer-start').click();
-      const fold = p.getByRole('button', { name: 'Minimize to title' });
+      const fold = p.getByRole('button', { name: 'Minimize to header and timer' });
       const restore = p.getByRole('button', { name: 'Restore overlay' });
       for (const manual of [false, true]) {
         if (manual) {
@@ -91,15 +91,59 @@ test('minimize to the title and restore content, running timer and window size',
         const before = await bounds();
         await fold.click(); await restore.waitFor();
         assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());
-        assert.deepEqual(await p.locator('#panel button:visible').evaluateAll(bs => bs.map(b => b.id)), ['fold']);
-        assert.ok(await p.locator('#writing').isHidden() && await p.locator('#countdown').isHidden() && await p.locator('#header-clock').isHidden());
-        await p.waitForFunction(() => (window.questlog ? innerHeight : document.getElementById('panel').offsetHeight) <= 40);
+        assert.ok(await p.locator('#writing').isHidden() && await p.locator('#header-clock').isVisible());
+        assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible() && await p.locator('#gear').isVisible());
+        await p.waitForFunction(previous => {
+          const panel = document.getElementById('panel');
+          const height = window.questlog ? innerHeight : panel.offsetHeight;
+          return height < previous && Math.ceil(document.getElementById('countdown').getBoundingClientRect().bottom - panel.getBoundingClientRect().top) <= height;
+        }, before[1]);
         assert.equal((await bounds())[0], before[0]);
         await restore.press('Enter'); await fold.waitFor();
         await p.waitForFunction(([w,h]) => {
           const el = window.questlog ? document.documentElement : document.getElementById('panel');
           return el.clientWidth === w && el.clientHeight === h;
         }, before);
+        assert.equal(await p.locator('#notes').innerText(), 'Return to camp');
+        assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible());
+      }
+      const hover = async inside => {
+        if (p === preview) {
+          if (inside) {
+            const target = await p.locator('#reveal-icon').isVisible() ? '#reveal-icon' : '#overlay-title';
+            const box = await p.locator(target).boundingBox();
+            await p.mouse.move(box.x + 8, box.y + 8);
+          } else await p.mouse.move(1, 1);
+        } else {
+          // Use the same event as the OS cursor poller without moving the user's mouse.
+          const win = await app.browserWindow(p);
+          try { await win.evaluate((w, hot) => w.webContents.send('panel:hover', hot), inside); }
+          finally { await win.dispose(); }
+        }
+      };
+      for (const behavior of ['compact', 'icon']) {
+        await p.locator('#gear').click();
+        await p.getByLabel('Auto-hide').selectOption(behavior);
+        await p.getByLabel('Idle opacity').fill('24'); await p.getByLabel('Hover opacity').fill('85');
+        await p.getByLabel('Fade text too').check();
+        await p.locator('#settings-done').click();
+        await p.evaluate(() => document.activeElement.blur());
+        await hover(true); await hover(false);
+        if (behavior === 'compact') {
+          await restore.waitFor();
+          assert.ok(await p.locator('#writing').isHidden());
+          assert.ok(await p.locator('#header-clock').isVisible() && await p.locator('#timer-start').isVisible());
+        } else {
+          await p.getByRole('button', { name: 'Show Questlog' }).waitFor();
+          await p.waitForFunction(() => {
+            const panel = document.getElementById('panel');
+            return (window.questlog ? innerWidth : panel.offsetWidth) === 40 && (window.questlog ? innerHeight : panel.offsetHeight) === 40;
+          });
+          assert.ok(await p.locator('#writing').isHidden() && await p.locator('#countdown').isHidden());
+        }
+        await p.waitForFunction(() => +getComputedStyle(document.getElementById('panel')).opacity === .24);
+        await hover(true);
+        await p.waitForFunction(() => document.getElementById('writing').offsetHeight > 0 && +getComputedStyle(document.getElementById('panel')).opacity === .85);
         assert.equal(await p.locator('#notes').innerText(), 'Return to camp');
         assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible());
       }
@@ -520,7 +564,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       await page.getByRole('button', { name: 'Done', exact: true }).click();
       assert.equal(await page.locator('#dev-panel, #toggle-dev, #move > svg').count(), 0);
       assert.deepEqual(await page.locator('.tools button').evaluateAll(bs => bs.map(b => b.getAttribute('aria-label'))),
-        ['Insert item', 'Notepad', 'Settings', 'Lock overlay', 'Minimize to title']);
+        ['Insert item', 'Notepad', 'Settings', 'Lock overlay', 'Minimize to header and timer']);
     });
     const check = page.getByRole('checkbox', { name: 'Complete: Mark the map', exact: true });
     await check.click();

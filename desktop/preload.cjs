@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('questlog', {
   load: () => ipcRenderer.invoke('journal:load'),
   save: journal => ipcRenderer.send('journal:save', journal),
-  fit: height => ipcRenderer.send('panel:fit', height),
+  fit: (height, layout) => ipcRenderer.send('panel:fit', height, layout),
   size: (width, height) => ipcRenderer.send('panel:size', { width, height }),
   autoSize: () => ipcRenderer.send('panel:auto-size'),
   openLink: url => ipcRenderer.invoke('link:open', url),
@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('questlog', {
     ipcRenderer.send('timer:watch');
   },
   toggleLock: () => ipcRenderer.send('panel:toggle-lock'),
-  toggleFold: () => ipcRenderer.send('panel:toggle-fold'),
+  onReveal: callback => ipcRenderer.on('panel:reveal', () => callback()),
   hide: () => ipcRenderer.send('panel:hide'),
   quit: () => ipcRenderer.send('panel:quit'),
   onMode: callback => ipcRenderer.on('panel:mode', (_event, mode) => callback(mode)),

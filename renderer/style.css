@@ -163,7 +163,7 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 #update-action { display: grid; place-items: center; width: 24px; height: 24px; color: var(--cp-linen); border-radius: 4px; }
 #update-action:hover, #update-action:focus-visible { color: var(--cp-ivory); }
 #update-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
-#panel.folded #update-action, .locked #update-action { display: none; }
+.locked #update-action { display: none; }
 .topline:active { cursor: grabbing; }
 .desktop:not(.locked) .topline { -webkit-app-region: drag; }
 .locked .topline { cursor: default; }
@@ -182,12 +182,12 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
   display: flex; flex: none; align-items: center; min-height: 24px; margin: 0 4px 2px;
   font: var(--item-size)/var(--leading) var(--journal-face); text-shadow: var(--ink-shadow);
 }
-#panel.folded { padding-bottom: 2px; }
-html:not(.desktop) #panel.folded { height: 40px !important; }
-#panel.folded .topline { display: flex; flex-wrap: nowrap; flex: 1; }
-#panel.folded .tools { opacity: 1; }
-#panel.folded :is(#header-clock, #writing, #countdown, #resize, #notice),
-#panel.folded .tools > :not(#fold) { display: none; }
+#panel.folded { height: auto !important; padding-bottom: 2px; }
+#panel.folded :is(#writing, #resize, #notice) { display: none; }
+#panel.icon-only { width: 40px !important; height: 40px !important; padding: 0; }
+#panel.icon-only > :not(#reveal-icon, .sr-only) { display: none; }
+#reveal-icon { width: 100%; height: 100%; display: grid; place-items: center; }
+#reveal-icon svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 1px var(--cp-smoke)); }
 #timer-time {
   field-sizing: content; min-width: 4ch; max-width: 8ch; min-height: 24px; margin: 0; padding: 0;
   border: 0; background: transparent; color: inherit; caret-color: var(--cp-ivory); text-shadow: inherit; font-variant-numeric: tabular-nums;

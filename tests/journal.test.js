@@ -98,10 +98,12 @@ test('a damaged or newer journal is never replaced with an empty list', t => {
   }
 });
 
-test('older v3 journals gain color defaults and only opaque picker colors are accepted', () => {
-  const { backgroundColor, textColor, ...old } = newJournal();
+test('older v3 journals gain color defaults and keep auto-hide off', () => {
+  const { backgroundColor, textColor, autoHide, ...old } = newJournal();
   old.notes = 'Stay as written'; old.opacity = 0;
-  assert.deepEqual(loadJournal(old), { ...old, backgroundColor, textColor });
+  assert.equal(autoHide, 'off');
+  assert.deepEqual(loadJournal(old), { ...old, backgroundColor, textColor, autoHide });
+  assert.throws(() => loadJournal({ ...old, autoHide: 'invalid' }), /auto-hide/);
   for (const bad of [null, 'red', '#12345678', ['#ffffff']]) {
     assert.throws(() => loadJournal({ ...old, textColor: bad }), /color/);
   }

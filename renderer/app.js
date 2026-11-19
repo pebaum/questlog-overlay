@@ -7,13 +7,14 @@ import { enableBlockDrag } from './reorder.js';
 import { initTimer } from './timer.js';
 import { localStamp } from '../shared/local-time.js';
 import { bindUpdateAction } from './update-action.js';
+import { bindVisibility } from './visibility.js';
 
 const $ = id => document.getElementById(id);
 const root = document.documentElement, native = window.questlog, list = $('items'), panel = $('panel');
 const editors = new Map(), values = new Map(), previewKey = 'questlog.preview.v3';
 // An explicit blank block (Enter or a type shortcut) is not a disposable input placeholder.
 const keptBlanks = new WeakSet();
-let journal, mode = { locked: false, shortcut: null }, note, frame, cancelDrag, resetSize, syncTimerMode;
+let journal, mode = { locked: false, shortcut: null }, note, frame, cancelDrag, resetSize, syncTimerMode, visibility;
 const locked = () => mode.locked;
 
 function openPreview() {
@@ -36,8 +37,9 @@ function save() {
 }
 function fit() {
   cancelAnimationFrame(frame);
-  if (!native || mode.folded || panel.classList.contains('manual')) return;
-  frame = requestAnimationFrame(() => native.fit(Math.ceil(panel.getBoundingClientRect().height)));
+  if (!native) return;
+  frame = requestAnimationFrame(() => native.fit(Math.ceil(panel.getBoundingClientRect().height),
+    panel.classList.contains('icon-only') ? 'icon' : panel.classList.contains('folded') ? 'compact' : 'expanded'));
 }
 function appearance() {
   const s = panel.style;
@@ -50,6 +52,7 @@ function appearance() {
   $('background-color').value = journal.backgroundColor;
   $('text-color').value = journal.textColor;
   panel.classList.toggle('fade-text', journal.fadeText);
+  $('auto-hide').value = journal.autoHide;
   s.setProperty('--screen-fx', journal.dither ? 'url("#screen-dither")' : 'none');
   $('dither-mix').setAttribute('k2', journal.dither / 100); $('dither-mix').setAttribute('k3', 1 - journal.dither / 100);
   for (const side of ['width', 'height']) $('dither-cell').setAttribute(side, journal.pixelSize * 4);
@@ -62,9 +65,11 @@ function appearance() {
 function closeSettings() {
   $('settings').hidden = true;
   $('gear').setAttribute('aria-expanded', 'false');
+  visibility?.refresh();
 }
 function openSettings() {
-  if (locked() || mode.folded) return;
+  if (locked()) return;
+  visibility.reveal();
   $('settings').hidden = false; $('gear').setAttribute('aria-expanded', 'true'); $('idle-opacity').focus();
 }
 function openLink(href) {
@@ -85,6 +90,7 @@ function bindSettings() {
     appearance(); save();
   };
   $('fade-text').onchange = () => { journal.fadeText = $('fade-text').checked; appearance(); save(); };
+  $('auto-hide').onchange = () => { journal.autoHide = $('auto-hide').value; appearance(); visibility.refresh(); save(); };
   for (const [id, key] of [['background-color', 'backgroundColor'], ['text-color', 'textColor']]) {
     $(id).oninput = () => { journal[key] = $(id).value; appearance(); save(); };
   }
@@ -277,18 +283,6 @@ function showNotes() {
 }
 function setMode(next) {
   mode = next;
-  if (next.folded && !panel.classList.contains('folded')) {
-    closeSettings(); cancelDrag?.();
-    if (!native && !panel.classList.contains('placed')) {
-      const { left, top } = panel.getBoundingClientRect();
-      panel.style.left = `${left}px`; panel.style.top = `${top}px`; panel.classList.add('placed');
-    }
-  }
-  panel.classList.toggle('folded', !!next.folded);
-  const fold = $('fold');
-  fold.title = next.folded ? 'Restore overlay' : 'Minimize to title';
-  fold.setAttribute('aria-label', fold.title); fold.setAttribute('aria-expanded', String(!next.folded));
-  fold.querySelector('path').setAttribute('d', next.folded ? 'M5 5h14v14H5z' : 'M5 12h14');
   if (locked()) { document.activeElement?.blur(); closeSettings(); clearEmptyRows(); cancelDrag?.(); }
   root.classList.toggle('locked', locked()); $('move').title = locked() ? '' : 'Drag to move';
   syncTimerMode?.();
@@ -308,12 +302,12 @@ async function init() {
     journal = loadJournal(data.journal); mode = data.mode; fixed = data.manualSize;
     root.style.setProperty('--panel-limit', `${data.maxHeight}px`);
     panel.classList.toggle('hot', !!data.hot);
-    native.onHover(h => panel.classList.toggle('hot', h));
     native.onLimit(h => root.style.setProperty('--panel-limit', `${h}px`));
     native.onSave(s => notice(s.ok ? '' : `Changes not saved: ${s.error}`));
     native.onMode(setMode); native.onSettings(openSettings);
   } else journal = openPreview();
   resetSize = setupGeometry(panel, native, fixed, locked, notice);
+  visibility = bindVisibility(panel, native, () => journal.autoHide, fit, panel.classList.contains('hot'), closeSettings);
   cancelDrag = enableBlockDrag(list, $('writing'), locked, placeRow);
   bindSettings();
   for (const item of journal.items) createRow(item);
@@ -328,17 +322,16 @@ async function init() {
     }
   });
   $('append').onclick = () => {
+    visibility.reveal();
     closeSettings(); const last = list.lastElementChild;
     (last?.classList.contains('empty') ? editors.get(last) : createRow()).focus();
   };
   $('toggle-notes').onclick = () => {
+    visibility.reveal();
     closeSettings(); journal.notesOpen = !journal.notesOpen;
     showNotes(); clearEmptyRows(); save(); if (journal.notesOpen) note.focus();
   };
   $('lock').onclick = () => native ? native.toggleLock() : setMode({ ...mode, locked: !locked() });
-  $('fold').onclick = () => {
-    if (!locked()) { if (native) native.toggleFold(); else setMode({ ...mode, folded: !mode.folded }); }
-  };
   document.addEventListener('click', clearEmptyRows); document.addEventListener('keyup', clearEmptyRows);
   syncTimerMode = initTimer(native, locked, notice);
   bindUpdateAction($('update-action'), native, notice);

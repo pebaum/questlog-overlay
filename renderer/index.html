@@ -46,6 +46,7 @@
   </svg>
   <div class="scenery" aria-hidden="true">__ATLAS__</div>
   <main id="panel" aria-labelledby="overlay-title">
+    <button id="reveal-icon" type="button" aria-label="Show Questlog" title="Show Questlog" hidden><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M16 1l5 10 10 5-10 5-5 10-5-10-10-5 10-5z M16 7l-3 6-6 3 6 3 3 6 3-6 6-3-6-3z M16 12l4 4-4 4-4-4z"/></svg></button>
     <header class="topline" id="move" title="Drag to move">
       <div class="title-group">
         <h1 id="overlay-title">QUESTS</h1>
@@ -57,7 +58,7 @@
         <button id="toggle-notes" aria-label="Notepad" title="Show or hide notepad" aria-controls="notes" aria-expanded="false"><svg><use href="#i-note"/></svg></button>
         <button id="gear" aria-label="Settings" title="Settings" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#i-settings"/></svg></button>
         <button id="lock" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button>
-        <button id="fold" aria-label="Minimize to title" title="Minimize to title" aria-expanded="true" aria-controls="header-clock countdown writing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        <button id="fold" aria-label="Minimize to header and timer" title="Minimize to header and timer" aria-expanded="true" aria-controls="writing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
       </div>
     </header>
     <form id="countdown" aria-label="Countdown">
@@ -75,6 +76,7 @@
     </div>
     <section id="settings" class="sheet" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><h2 id="settings-title">Settings</h2><button id="settings-done">Done</button></div>
+      <label>Auto-hide <select id="auto-hide"><option value="off">Off</option><option value="icon">Show icon</option><option value="compact">Keep title and timer</option></select></label>
       <label>Idle opacity <input id="idle-opacity" type="range" min="0" max="100"><output for="idle-opacity"></output></label>
       <label>Hover opacity <input id="hover-opacity" type="range" min="0" max="100"><output for="hover-opacity"></output></label>
       <label>Background color <input id="background-color" type="color"></label>
