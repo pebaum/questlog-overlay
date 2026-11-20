@@ -13,6 +13,61 @@ async function openNotes(page) {
   await page.getByRole('checkbox', { name: 'Show notepad' }).check();
 }
 
+test('backgrounds: choose different tiles, import dithered local art, restore and remove it', { timeout: 40_000 }, async () => {
+  const profile = await mkdtemp(path.join(tmpdir(), 'questlog-material-'));
+  let app;
+  try {
+    app = await electron.launch({ cwd: root, args: ['.', `--user-data-dir=${profile}`] });
+    const page = await app.firstWindow();
+    const [preview] = await Promise.all([app.waitForEvent('window'), app.evaluate(async ({ BrowserWindow }, file) => {
+      const w = new BrowserWindow({ width: 650, height: 480, show: false });
+      await w.loadFile(file);
+    }, path.join(root, 'app', 'index.html'))]);
+    for (const p of [page, preview]) {
+      const input = p.locator('#background-file'), select = p.getByLabel('Background texture');
+      await p.locator('#gear').click();
+      assert.equal(await select.inputValue(), 'plain');
+      const tiles = new Set();
+      for (const kind of ['parchment', 'leather', 'masonry', 'mail', 'weave', 'wood', 'stars']) {
+        await select.selectOption(kind);
+        const tile = await p.locator('#panel').evaluate(el => getComputedStyle(el, '::before').backgroundImage);
+        assert.match(tile, /^url\("data:image\/png;base64,/); tiles.add(tile);
+      }
+      assert.equal(tiles.size, 7);
+      const source = await p.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+        const ctx = c.getContext('2d'); ctx.fillStyle = 'rgb(143, 143, 143)'; ctx.fillRect(0, 0, c.width, c.height);
+        return c.toDataURL().split(',')[1];
+      });
+      await input.setInputFiles({ name: 'map.png', mimeType: 'image/png', buffer: Buffer.from(source, 'base64') });
+      await p.waitForFunction(() => document.getElementById('panel').dataset.surface === 'custom');
+      const processed = await p.evaluate(async () => {
+        const panel = document.getElementById('panel'), layer = getComputedStyle(panel, '::before');
+        const img = new Image(); img.src = layer.backgroundImage.slice(5, -2); await img.decode();
+        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+        const pixels = ctx.getImageData(0, 0, 4, 4).data;
+        return [layer.backgroundSize, img.width, img.height, [...new Set(pixels.filter((_, i) => i % 4 === 0))].sort()];
+      });
+      assert.deepEqual(processed, ['cover', 256, 128, [109, 146]]);
+      await input.setInputFiles({ name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
+      await p.locator('#background-status').filter({ hasText: 'Image not changed' }).waitFor();
+      assert.equal(await select.inputValue(), 'custom');
+      await p.reload(); await p.locator('#gear').click();
+      assert.equal(await select.inputValue(), 'custom');
+      await select.selectOption('plain'); await select.selectOption('custom');
+      await p.getByLabel('Idle opacity').fill('0'); await p.getByLabel('Hover opacity').fill('0');
+      await p.waitForFunction(() => +getComputedStyle(document.getElementById('panel'), '::before').opacity === 0);
+      await p.getByRole('button', { name: 'Remove image' }).click();
+      assert.equal(await select.inputValue(), 'plain');
+      assert.ok(await select.locator('[value="custom"]').isDisabled());
+    }
+  } finally {
+    try { await app?.close(); }
+    finally { await rm(profile, { force: true, recursive: true, maxRetries: 4, retryDelay: 150 }); }
+  }
+});
+
 test('Windows whole-display capture omits or blanks the visible overlay', { skip: process.platform !== 'win32', timeout: 40_000 }, async () => {
   const profile = await mkdtemp(path.join(tmpdir(), 'questlog-capture-'));
   let app;

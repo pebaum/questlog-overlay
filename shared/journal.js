@@ -1,6 +1,7 @@
 import { typefaces } from './typefaces.js';
 import { appearanceRanges, defaultAppearance, defaultColors, legacyAppearance } from './appearance.js';
 import { blockTypes, checkSpans } from './rich.js';
+import { materials } from './backgrounds.js';
 
 export const limits = Object.freeze({ item: 32_000, notes: 200_000 });
 
@@ -35,6 +36,7 @@ export function validateJournal(value) {
     if (typeof value[id] !== 'string' || !/^#[0-9a-f]{6}$/i.test(value[id])) throw new Error(`Invalid appearance color: ${id}.`);
   }
   if (!['off', 'icon', 'compact'].includes(value.autoHide)) throw new Error('Invalid auto-hide preference.');
+  if (typeof value.backgroundTexture !== 'string' || !Object.hasOwn(materials, value.backgroundTexture)) throw new Error('Invalid background texture.');
   for (const [id, [min, max]] of Object.entries(appearanceRanges)) {
     if (!Number.isInteger(value[id]) || value[id] < min || value[id] > max) throw new Error(`Invalid appearance setting: ${id}.`);
   }
@@ -51,7 +53,7 @@ export function validateJournal(value) {
 }
 
 export function loadJournal(value) {
-  if (value?.version === 3) return validateJournal({ ...defaultColors, autoHide: 'off', ...value });
+  if (value?.version === 3) return validateJournal({ ...defaultColors, autoHide: 'off', backgroundTexture: 'plain', ...value });
   if (value?.version === 2 && Object.hasOwn(value, 'opacity') && Array.isArray(value.items)) {
     return validateJournal({ ...legacyAppearance, ...value, version: 3, hoverOpacity: Math.max(value.opacity, 70), fadeText: false,
       items: value.items.map(item => ({ ...item, kind: 'todo' })) });

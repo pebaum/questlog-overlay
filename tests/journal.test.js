@@ -98,11 +98,13 @@ test('a damaged or newer journal is never replaced with an empty list', t => {
   }
 });
 
-test('older v3 journals gain color defaults and keep auto-hide off', () => {
-  const { backgroundColor, textColor, autoHide, ...old } = newJournal();
+test('older v3 journals gain color defaults and keep auto-hide off and the background plain', () => {
+  const { backgroundColor, textColor, autoHide, backgroundTexture, ...old } = newJournal();
   old.notes = 'Stay as written'; old.opacity = 0;
   assert.equal(autoHide, 'off');
-  assert.deepEqual(loadJournal(old), { ...old, backgroundColor, textColor, autoHide });
+  assert.equal(backgroundTexture, 'plain');
+  assert.deepEqual(loadJournal(old), { ...old, backgroundColor, textColor, autoHide, backgroundTexture });
+  assert.throws(() => loadJournal({ ...old, backgroundTexture: 'url(https://example.com/image)' }), /texture/);
   assert.throws(() => loadJournal({ ...old, autoHide: 'invalid' }), /auto-hide/);
   for (const bad of [null, 'red', '#12345678', ['#ffffff']]) {
     assert.throws(() => loadJournal({ ...old, textColor: bad }), /color/);

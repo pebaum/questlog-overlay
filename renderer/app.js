@@ -7,6 +7,7 @@ import { enableBlockDrag } from './reorder.js';
 import { initTimer } from './timer.js';
 import { localStamp } from '../shared/local-time.js';
 import { bindUpdateAction } from './update-action.js';
+import { bindBackground } from './background.js';
 import { bindVisibility } from './visibility.js';
 
 const $ = id => document.getElementById(id);
@@ -48,6 +49,7 @@ function appearance() {
   s.setProperty('--row-gap', `${journal.rowGap}px`); s.setProperty('--leading', journal.lineHeight / 100);
   s.setProperty('--idle', `${journal.opacity}%`); s.setProperty('--hover', `${journal.hoverOpacity}%`);
   s.setProperty('--cp-smoke', journal.backgroundColor);
+  s.setProperty('--cp-material-base', journal.backgroundColor);
   s.setProperty('--cp-ivory', journal.textColor);
   $('background-color').value = journal.backgroundColor;
   $('text-color').value = journal.textColor;
@@ -313,6 +315,7 @@ async function init() {
   visibility = bindVisibility(panel, native, () => journal.autoHide, fit, panel.classList.contains('hot'), closeSettings);
   cancelDrag = enableBlockDrag(list, $('writing'), locked, placeRow);
   bindSettings();
+  bindBackground(panel, journal, save, locked);
   for (const item of journal.items) createRow(item);
   startHeaderClock();
   note = inlineEditor($('notes'), {

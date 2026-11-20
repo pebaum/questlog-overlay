@@ -94,6 +94,14 @@ html:not(.desktop) body { min-height: 100dvh; padding: 12px; display: grid; plac
 }
 #panel.hot, html:not(.desktop) #panel:hover { --level: var(--hover); }
 #panel.fade-text { background-color: var(--cp-smoke); opacity: var(--level); }
+#panel[data-surface]:not([data-surface="plain"]) { isolation: isolate; background-color: transparent; }
+#panel[data-surface]:where(:not([data-surface="plain"]))::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: var(--cp-material-base) var(--surface-image) center / 128px 128px repeat;
+  image-rendering: pixelated; opacity: var(--level); transition: opacity 140ms ease-out;
+}
+#panel[data-surface="custom"]::before { background-size: cover; background-repeat: no-repeat; }
+#panel[data-surface].fade-text::before { opacity: 1; }
 #panel:has(.sheet:not([hidden])) { opacity: 1; }
 .desktop #panel { width: 100%; max-height: var(--panel-limit); }
 .desktop #panel.manual { height: 100dvh; max-height: none; }
@@ -236,6 +244,11 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .sheet input, .sheet select { accent-color: var(--cp-linen); }
 .sheet input:not([type="range"],[type="checkbox"]), .sheet select { padding: 3px 4px; background: var(--cp-smoke); color: var(--cp-ivory); border: 1px solid var(--cp-border-strong); border-radius: 4px; }
 .sheet output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+.material-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding-block: 4px; }
+#material-swatch { width: 52px; height: 28px; border: 1px solid var(--cp-border-strong); border-radius: 3px;
+  background-color: var(--cp-material-base); background-size: 64px 64px; background-position: center; image-rendering: pixelated; }
+#material-swatch[data-surface="custom"] { background-size: cover; }
+#background-status { margin: 0; }
 #resize { position: absolute; bottom: 0; right: 0; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; opacity: 0; }
 #resize svg { width: 13px; height: 13px; fill: none; stroke: var(--cp-linen); stroke-width: 1.5; filter: drop-shadow(0 1px 1px var(--cp-smoke)); }
 #panel:hover #resize, #resize:focus-visible { opacity: 1; }
@@ -248,7 +261,9 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 #lock[aria-pressed="true"] { background: var(--cp-bg-elevated); color: var(--cp-text); }
 @media (hover: none) { .block-handle, #resize { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tools, #panel { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #panel[data-surface]::before { transition: none; } }
 @media (forced-colors: active) {
+  #panel[data-surface]::before { display: none; }
   .tick svg, .tools svg { stroke: currentColor; filter: none; }
   .topline h1, .rich, #countdown { text-shadow: none; }
   #timer-cells { filter: none; }

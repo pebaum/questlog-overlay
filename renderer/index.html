@@ -76,6 +76,14 @@
       <label>Idle opacity <input id="idle-opacity" type="range" min="0" max="100"><output for="idle-opacity"></output></label>
       <label>Hover opacity <input id="hover-opacity" type="range" min="0" max="100"><output for="hover-opacity"></output></label>
       <label>Background color <input id="background-color" type="color"></label>
+      <label>Background texture <select id="background-texture"></select></label>
+      <div class="material-actions">
+        <span id="material-swatch" aria-hidden="true"></span>
+        <input id="background-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        <button id="choose-background" type="button">Choose image…</button>
+        <button id="remove-background" type="button" hidden>Remove image</button>
+      </div>
+      <p id="background-status" role="status" hidden></p>
       <label>Text color <input id="text-color" type="color"></label>
       <label><input id="fade-text" type="checkbox"> Fade text too</label>
       <label>Typeface <select id="typeface"></select></label>
