@@ -99,7 +99,7 @@ test('minimize to the full header and timer, restore size, and recover from both
         });
         if (p === page) await p.waitForFunction(() => innerHeight === Math.ceil(document.getElementById('panel').getBoundingClientRect().height));
         const before = await bounds();
-        const titleGesture = p === preview && manual;
+        const titleGesture = manual;
         if (titleGesture) await p.locator('#overlay-title').dblclick(); else await fold.click();
         await restore.waitFor();
         assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());

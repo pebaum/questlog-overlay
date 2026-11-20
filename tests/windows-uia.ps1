@@ -102,11 +102,26 @@ public static class QuestlogHitTest {
     }
     public static bool PassesClicks(int handle) { return (GetWindowLong(new IntPtr(handle), -20) & 0x20) != 0; }
     [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr w, uint msg, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
-    public static void DoubleClickCaption(int handle, int x, int y) {
-        int hit = At(handle, x, y);
-        if (hit != 2) throw new Exception("Test point is not on the native caption");
-        IntPtr result;
-        if (SendMessageTimeout(new IntPtr(handle), 0xA3, new IntPtr(hit), new IntPtr(unchecked((y << 16) | (x & 65535))), 2, 1500, out result) == IntPtr.Zero) throw new Exception("Caption double-click timed out");
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out Point p);
+    [DllImport("user32.dll")] static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+    public static void DoubleClickTitle(int handle, int x, int y) {
+        var old = SetThreadDpiAwarenessContext(new IntPtr(-4));
+        Point start; GetCursorPos(out start);
+        try {
+            // Transparent dither pixels can pass through. Send input only over this fixture's title.
+            int dx = 0;
+            while (dx < 30 && RootAt(x+dx,y) != new IntPtr(handle)) dx++;
+            if (dx == 30 || At(handle,x+dx,y) != 1) throw new Exception("No hittable title text");
+            x += dx; SetCursorPos(x,y);
+            System.Threading.Thread.Sleep(120);
+            for (int i=0; i<2; ++i) {
+                Point p; GetCursorPos(out p);
+                if (p.x != x || p.y != y || RootAt(x,y) != new IntPtr(handle)) throw new Exception("Fixture lost the click target");
+                mouse_event(2,0,0,0,UIntPtr.Zero); mouse_event(4,0,0,0,UIntPtr.Zero);
+                System.Threading.Thread.Sleep(50);
+            }
+        } finally { SetCursorPos(start.x,start.y); SetThreadDpiAwarenessContext(old); }
     }
     public static int At(int handle, int x, int y) {
         var old = SetThreadDpiAwarenessContext(new IntPtr(-4));
@@ -121,15 +136,14 @@ public static class QuestlogHitTest {
     $hwnd = $window.Current.NativeWindowHandle
     $add = (Control 'Settings').Current.BoundingRectangle
     $y = [int]($add.Top + $add.Height/2)
-    foreach ($x in @($window.Current.BoundingRectangle.Left + 18; $add.Left - 9)) {
-        if ([QuestlogHitTest]::At($hwnd,$x,$y) -ne 2) { throw 'The heading and the blank part of its bar must both move the native window' }
-    }
+    if ([QuestlogHitTest]::At($hwnd,($add.Left - 9),$y) -ne 2) { throw 'The blank part of the title bar must retain native dragging' }
     if ([QuestlogHitTest]::At($hwnd,($add.Left + $add.Width/2),$y) -ne 1) { throw 'Header buttons must not initiate dragging' }
     $x = [int]($window.Current.BoundingRectangle.Left + 18)
-    [QuestlogHitTest]::DoubleClickCaption($hwnd,$x,$y)
+    [QuestlogHitTest]::DoubleClickTitle($hwnd,$x,$y)
     [void](Control 'Restore overlay' ([System.Windows.Automation.ControlType]::Button))
     [void](Control 'Timer time' ([System.Windows.Automation.ControlType]::Edit))
-    [QuestlogHitTest]::DoubleClickCaption($hwnd,$x,$y)
+    Start-Sleep -Milliseconds 650
+    [QuestlogHitTest]::DoubleClickTitle($hwnd,$x,$y)
     [void](Control 'Minimize to header and timer' ([System.Windows.Automation.ControlType]::Button))
 }
 function Stop-Fixture {

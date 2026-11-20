@@ -312,6 +312,13 @@ async function start() {
     resizePanel();
   });
   ipcMain.on('panel:toggle-lock', e => { if (fromPanel(e)) setLocked(!locked); });
+  ipcMain.on('panel:drag-title', (e, x, y) => {
+    if (!fromPanel(e) || locked || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    const bounds = win.getContentBounds();
+    if (x < 0 || y < 0 || x >= bounds.width || y >= bounds.height) return;
+    const point = screen.getCursorScreenPoint();
+    win.setPosition(Math.round(point.x - x), Math.round(point.y - y));
+  });
   ipcMain.on('panel:hide', e => { if (fromPanel(e)) win.hide(); });
   ipcMain.on('panel:quit', e => { if (fromPanel(e)) app.quit(); });
   shortcut = globalShortcut.register(accelerator, () => {

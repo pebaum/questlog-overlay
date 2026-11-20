@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('questlog', {
   fit: (height, layout) => ipcRenderer.send('panel:fit', height, layout),
   size: (width, height) => ipcRenderer.send('panel:size', { width, height }),
   autoSize: () => ipcRenderer.send('panel:auto-size'),
+  dragTitle: (x, y) => ipcRenderer.send('panel:drag-title', x, y),
   openLink: url => ipcRenderer.invoke('link:open', url),
   startTimer: entry => ipcRenderer.invoke('timer:start', entry),
   stopTimer: () => ipcRenderer.invoke('timer:stop'),
