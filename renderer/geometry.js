@@ -30,44 +30,33 @@ export function setupGeometry(panel, native, fixed, locked, report) {
       if (panel.classList.contains('placed')) place(panel.offsetLeft, panel.offsetTop);
     }
   }
-  if (native) {
-    panel.classList.toggle('manual', fixed);
-    // Let Chromium recognize an actual double-click on the title. The rest of the bar keeps native dragging.
-    const title = document.getElementById('overlay-title');
-    let press, moved = false;
-    title.onpointerdown = e => {
-      if (locked() || !e.isPrimary || e.button !== 0) return;
-      moved = false;
-      press = { screenX: e.screenX, screenY: e.screenY, x: e.clientX, y: e.clientY };
-      title.setPointerCapture(e.pointerId);
-    };
-    title.onpointermove = e => {
-      if (!press || locked() || !(e.buttons & 1) || !title.hasPointerCapture(e.pointerId)) return;
-      if (!moved && Math.hypot(e.screenX - press.screenX, e.screenY - press.screenY) < 4) return;
-      moved = true;
-      native.dragTitle(press.x, press.y);
-    };
-    title.onlostpointercapture = () => { press = null; };
-    title.addEventListener('dblclick', e => { if (moved) e.stopImmediatePropagation(); }, true);
-  } else {
+  if (native) panel.classList.toggle('manual', fixed);
+  else {
     try {
       const size = JSON.parse(localStorage.getItem(key) ?? 'null');
       if (Array.isArray(size) && size.length === 2 && size.every(n => Number.isFinite(n) && n > 0)) setSize(...size);
     } catch (e) { report(`Cannot restore preview size: ${e.message}`); }
-    grip.onpointerdown = e => {
-      if (locked() || !e.isPrimary || e.button !== 0 || e.target.closest('button')) return;
-      const r = panel.getBoundingClientRect();
-      grab = [e.clientX - r.left, e.clientY - r.top];
-      grip.setPointerCapture(e.pointerId); place(r.left, r.top);
-    };
-    grip.onpointermove = e => {
-      if (grab && !locked() && grip.hasPointerCapture(e.pointerId)) place(e.clientX - grab[0], e.clientY - grab[1]);
-    };
-    grip.onlostpointercapture = () => { grab = null; };
     const keep = () => { if (panel.classList.contains('placed')) place(panel.offsetLeft, panel.offsetTop); };
     window.addEventListener('resize', keep);
     new ResizeObserver(keep).observe(panel);
   }
+  let moved = false;
+  grip.onpointerdown = e => {
+    if (locked() || !e.isPrimary || e.button !== 0 || e.target.closest('button')) return;
+    moved = false;
+    const r = panel.getBoundingClientRect();
+    grab = { screenX: e.screenX, screenY: e.screenY, x: e.clientX - r.left, y: e.clientY - r.top };
+    grip.setPointerCapture(e.pointerId);
+  };
+  grip.onpointermove = e => {
+    if (!grab || locked() || !(e.buttons & 1) || !grip.hasPointerCapture(e.pointerId)) return;
+    if (!moved && Math.hypot(e.screenX - grab.screenX, e.screenY - grab.screenY) < 4) return;
+    moved = true;
+    if (native) native.dragTitle(grab.x, grab.y);
+    else place(e.clientX - grab.x, e.clientY - grab.y);
+  };
+  grip.onlostpointercapture = () => { grab = null; };
+  grip.addEventListener('dblclick', e => { if (moved && !e.target.closest('button')) e.stopImmediatePropagation(); }, true);
   corner.onpointerdown = e => {
     if (locked() || !e.isPrimary || e.button !== 0) return;
     const r = panel.getBoundingClientRect();

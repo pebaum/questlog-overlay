@@ -87,11 +87,10 @@ export function bindVisibility(panel, native, preference, fit, initiallyHot, clo
     closeSettings(); cancelMotion(); manual = true; auto = 'off'; render(); refresh();
   }
   fold.onclick = toggleCompact;
-  const dblTarget = panel.querySelector(native ? '#overlay-title' : '#move');
-  dblTarget.addEventListener('dblclick', e => {
+  header.addEventListener('dblclick', e => {
     if (e.button === 0 && !e.target.closest('button')) toggleCompact();
   });
-  if (native) { native.onHover(hover); native.onReveal(reveal); native.onTitleDoubleClick(toggleCompact); }
+  if (native) { native.onHover(hover); native.onReveal(reveal); }
   else {
     panel.addEventListener('pointerenter', () => hover(true));
     panel.addEventListener('pointerleave', () => hover(false));

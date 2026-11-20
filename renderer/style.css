@@ -165,23 +165,21 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 #update-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .locked #update-action { display: none; }
 .topline:active { cursor: grabbing; }
-.desktop:not(.locked) .topline { -webkit-app-region: drag; }
-.desktop #overlay-title { -webkit-app-region: no-drag; }
+.topline { anchor-name: --top-bar; }
+/* Windows passes fully transparent pixels through; give only the unlocked header a one-alpha hit surface outside the dither. */
+.desktop:not(.locked) body:has(#panel:not(.icon-only))::after { content: ''; position: fixed; position-anchor: --top-bar; inset: anchor(top) anchor(right) anchor(bottom) anchor(left); pointer-events: none; background: color-mix(in srgb, var(--cp-bg) .4%, transparent); }
 .locked .topline { cursor: default; }
-.tools { display: flex; align-items: center; margin-inline-start: auto; gap: 2px; }
-.tools > button { opacity: 0; transition: opacity 120ms ease-out; }
-#panel:hover .tools button, #panel:focus-within .tools button, #panel:has(.line.empty:only-child) .tools button { opacity: 1; }
+.tools-slot { anchor-name: --tools-slot; width: 76px; height: 24px; margin-inline-start: auto; }
+.tools { position: fixed; position-anchor: --tools-slot; inset: auto; top: anchor(top); left: anchor(left); display: flex; align-items: center; gap: 2px; padding: 0; margin: 0; border: 0; background: transparent; color: var(--cp-ivory); overflow: visible; }
+.tools::backdrop { display: none; }
 .tools button { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; }
 .tools button:hover, .tools button[aria-expanded="true"]:not(#fold) { background: color-mix(in srgb, var(--cp-smoke) 36%, transparent); }
 .tools svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 1px 1px var(--cp-smoke)); }
-#lock-slot { anchor-name: --lock-slot; width: 24px; height: 24px; }
-#lock { position: fixed; position-anchor: --lock-slot; inset: auto; top: anchor(top); left: anchor(left); margin: 0; color: var(--cp-ivory); }
-#lock::backdrop { display: none; }
-#panel.icon-only #lock { display: none; }
+#panel.icon-only .tools { display: none; }
 @container (max-width: 320px) {
   .topline { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "title tools" "readout readout"; }
   .title-group { justify-self: start; }
-  .topline .tools { grid-area: tools; }
+  .topline .tools-slot { grid-area: tools; }
   #header-clock { grid-area: readout; }
 }
 #countdown {
@@ -246,9 +244,9 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 .locked .line.empty { display: none; }
 .locked .rich[data-empty="true"]::before { content: none; }
 .locked #writing { pointer-events: none; }
-.locked .tools > button { visibility: hidden; }
+.tools button:disabled { opacity: .5; cursor: default; }
 #lock[aria-pressed="true"] { background: var(--cp-bg-elevated); color: var(--cp-text); }
-@media (hover: none) { .tools button:not(#lock), .block-handle, #resize { opacity: 1; } }
+@media (hover: none) { .block-handle, #resize { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tools, #panel { transition: none; } }
 @media (forced-colors: active) {
   .tick svg, .tools svg { stroke: currentColor; filter: none; }

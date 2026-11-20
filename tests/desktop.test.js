@@ -100,7 +100,7 @@ test('minimize to the full header and timer, restore size, and recover from both
         if (p === page) await p.waitForFunction(() => innerHeight === Math.ceil(document.getElementById('panel').getBoundingClientRect().height));
         const before = await bounds();
         const titleGesture = manual;
-        if (titleGesture) await p.locator('#overlay-title').dblclick(); else await fold.click();
+        if (titleGesture) await p.locator('#header-clock').dblclick(); else await fold.click();
         await restore.waitFor();
         assert.ok(await p.getByRole('heading', { name: 'QUESTS' }).isVisible());
         assert.ok(await p.locator('#writing').isHidden() && await p.locator('#header-clock').isVisible());
@@ -111,12 +111,17 @@ test('minimize to the full header and timer, restore size, and recover from both
           return height < previous && Math.ceil(document.getElementById('countdown').getBoundingClientRect().bottom - panel.getBoundingClientRect().top) <= height;
         }, before[1]);
         assert.equal((await bounds())[0], before[0]);
-        if (titleGesture) await p.locator('#overlay-title').dblclick(); else await restore.press('Enter');
+        if (titleGesture) {
+          const gear = await p.locator('#gear').boundingBox();
+          await p.mouse.dblclick(gear.x - 2, gear.y + gear.height / 2);
+        } else await restore.press('Enter');
         await fold.waitFor();
         await p.waitForFunction(([w,h]) => {
           const el = window.questlog ? document.documentElement : document.getElementById('panel');
           return el.clientWidth === w && el.clientHeight === h;
-        }, before);
+        }, before).catch(async error => {
+          throw new Error(`Restore size (${p === preview ? 'preview' : 'desktop'}, manual=${manual}): expected ${before}, got ${await bounds()}`, { cause: error });
+        });
         assert.equal(await p.locator('#notes').innerText(), 'Return to camp');
         assert.ok(await p.getByRole('button', { name: 'Stop timer' }).isVisible());
       }
@@ -641,7 +646,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       return app.evaluate(async ({ BrowserWindow }) => {
         const window = BrowserWindow.getAllWindows()[0];
-        const image = await window.webContents.capturePage({ x: window.getContentBounds().width - 11, y: 12, width: 8, height: 8 });
+        const image = await window.webContents.capturePage({ x: 0, y: 36, width: 8, height: 8 });
         const alpha = image.toBitmap().filter((_value, index) => index % 4 === 3);
         return { min: Math.min(...alpha), max: Math.max(...alpha), mean: alpha.reduce((sum, a) => sum + a, 0) / alpha.length };
       });
@@ -651,6 +656,7 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
       w.setPosition(p.x < area.x + area.width / 2 ? area.x + area.width - w.getBounds().width : area.x, area.y + 24);
     });
     await page.waitForTimeout(300);
+    assert.deepEqual(await page.locator('.tools button').evaluateAll(bs => bs.map(b => +getComputedStyle(b).opacity)), [1, 1, 1]);
     const stipple = await sampleBackdrop();
     assert.ok(stipple.max > stipple.min && Math.abs(stipple.mean / 255 - 0.06) < 0.015);
     await app.close();
@@ -698,6 +704,9 @@ test('direct editing, independent checkboxes, true opacity endpoints, lock and r
     await page.getByRole('textbox', { name: 'Notepad' }).fill('Camp is east of the river.\nBring two lamps.');
     const [unlockPage] = await Promise.all([app.waitForEvent('window'), page.getByRole('button', { name: 'Lock overlay' }).click()]);
     await page.waitForSelector('html.locked', { state: 'attached' });
+    for (const id of ['gear', 'fold']) {
+      assert.ok(await page.locator(`#${id}`).isVisible() && await page.locator(`#${id}`).isDisabled());
+    }
     assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'QUESTS').isFocusable()), false);
     await unlockPage.getByRole('button', { name: 'Unlock overlay' }).click();
     await page.waitForSelector('html:not(.locked)', { state: 'attached' });

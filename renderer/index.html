@@ -51,11 +51,11 @@
         <button id="update-action" type="button" aria-label="Download update" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path/></svg></button>
       </div>
       <time id="header-clock" aria-live="off" title="Current local time and date"></time>
-      <div class="tools" role="group" aria-label="Overlay controls">
+      <div class="tools-slot"><div id="header-controls" class="tools" popover="manual" role="group" aria-label="Overlay controls">
         <button id="gear" aria-label="Settings" title="Settings" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#i-settings"/></svg></button>
-        <span id="lock-slot"><button id="lock" popover="manual" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button></span>
+        <button id="lock" aria-label="Lock overlay" aria-pressed="false"><svg><use href="#i-open"/></svg></button>
         <button id="fold" aria-label="Minimize to header and timer" title="Minimize to header and timer" aria-expanded="true" aria-controls="writing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
-      </div>
+      </div></div>
     </header>
     <form id="countdown" aria-label="Countdown">
       <input id="timer-time" type="text" aria-label="Timer time" aria-description="Enter minutes, minutes:seconds, or a local time such as 11a or 1234p. Press Enter or Play to start." title="Minutes, mm:ss, or a local time (11a, 1234p)" value="--:--" maxlength="12" required autocomplete="off" spellcheck="false" readonly>

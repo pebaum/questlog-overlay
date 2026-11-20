@@ -290,6 +290,7 @@ function setMode(next) {
   for (const [row, v] of editors) { v.setProps({}); updateRow(row); }
   note.setProps({}); syncOrder(); showNotes();
   const action = locked() ? 'Unlock overlay' : 'Lock overlay';
+  $('gear').disabled = $('fold').disabled = locked();
   $('lock').title = native ? `${action} (${mode.shortcut ?? 'use the tray to unlock'})` : `${action} (preview only)`;
   $('lock').setAttribute('aria-label', action); $('lock').setAttribute('aria-pressed', String(locked()));
   $('lock').querySelector('use').setAttribute('href', locked() ? '#i-closed' : '#i-open');
@@ -328,8 +329,8 @@ async function init() {
     showNotes(); clearEmptyRows(); save(); if (journal.notesOpen) note.focus();
   };
   $('lock').onclick = () => native ? native.toggleLock() : setMode({ ...mode, locked: !locked() });
-  // The padlock must not inherit panel opacity: it is the way back even at 0%.
-  $('lock').showPopover();
+  // Keep the three header controls legible even when the panel itself fades to 0%.
+  $('header-controls').showPopover();
   if (native) {
     const reportLock = () => {
       if (!locked()) return;

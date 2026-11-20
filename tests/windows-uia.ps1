@@ -105,15 +105,13 @@ public static class QuestlogHitTest {
     [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out Point p);
     [DllImport("user32.dll")] static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
-    public static void DoubleClickTitle(int handle, int x, int y) {
+    public static void DoubleClickBar(int handle, int x, int y) {
         var old = SetThreadDpiAwarenessContext(new IntPtr(-4));
         Point start; GetCursorPos(out start);
         try {
-            // Transparent dither pixels can pass through. Send input only over this fixture's title.
-            int dx = 0;
-            while (dx < 30 && RootAt(x+dx,y) != new IntPtr(handle)) dx++;
-            if (dx == 30 || At(handle,x+dx,y) != 1) throw new Exception("No hittable title text");
-            x += dx; SetCursorPos(x,y);
+            // Do not search for a nearby ink pixel: the exact blank point must accept the double-click.
+            if (RootAt(x,y) != new IntPtr(handle) || At(handle,x,y) != 1) throw new Exception("Header point is not hittable");
+            SetCursorPos(x,y);
             System.Threading.Thread.Sleep(120);
             for (int i=0; i<2; ++i) {
                 Point p; GetCursorPos(out p);
@@ -136,15 +134,30 @@ public static class QuestlogHitTest {
     $hwnd = $window.Current.NativeWindowHandle
     $add = (Control 'Settings').Current.BoundingRectangle
     $y = [int]($add.Top + $add.Height/2)
-    if ([QuestlogHitTest]::At($hwnd,($add.Left - 9),$y) -ne 2) { throw 'The blank part of the title bar must retain native dragging' }
     if ([QuestlogHitTest]::At($hwnd,($add.Left + $add.Width/2),$y) -ne 1) { throw 'Header buttons must not initiate dragging' }
     $x = [int]($window.Current.BoundingRectangle.Left + 18)
-    [QuestlogHitTest]::DoubleClickTitle($hwnd,$x,$y)
+    [QuestlogHitTest]::DoubleClickBar($hwnd,$x,$y)
     [void](Control 'Restore overlay' ([System.Windows.Automation.ControlType]::Button))
     [void](Control 'Timer time' ([System.Windows.Automation.ControlType]::Edit))
     Start-Sleep -Milliseconds 650
-    [QuestlogHitTest]::DoubleClickTitle($hwnd,$x,$y)
+    [QuestlogHitTest]::DoubleClickBar($hwnd,($add.Left - 2),$y)
     [void](Control 'Minimize to header and timer' ([System.Windows.Automation.ControlType]::Button))
+    Invoke-Button 'Settings'
+    $slider = [System.Windows.Automation.ControlType]::Slider
+    $idle = (Control 'Idle opacity' $slider).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern)
+    $hover = (Control 'Hover opacity' $slider).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern)
+    $oldIdle = $idle.Current.Value
+    $oldHover = $hover.Current.Value
+    $idle.SetValue(0); $hover.SetValue(0)
+    Invoke-Button 'Done'
+    Start-Sleep -Milliseconds 650
+    [QuestlogHitTest]::DoubleClickBar($hwnd,($add.Left - 3),$y)
+    [void](Control 'Restore overlay' ([System.Windows.Automation.ControlType]::Button))
+    Invoke-Button 'Restore overlay'
+    Invoke-Button 'Settings'
+    (Control 'Hover opacity' $slider).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue($oldHover)
+    (Control 'Idle opacity' $slider).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue($oldIdle)
+    Invoke-Button 'Done'
 }
 function Stop-Fixture {
     if ($process -and !$process.HasExited) {
